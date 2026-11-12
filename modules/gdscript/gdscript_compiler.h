@@ -177,6 +177,9 @@ public:
 	static void convert_to_initializer_type(Variant &p_variant, const GDScriptParser::VariableNode *p_node);
 	static void make_scripts(GDScript *p_script, const GDScriptParser::ClassNode *p_class, bool p_keep_state);
 	Error compile(const GDScriptParser *p_parser, GDScript *p_script, bool p_keep_state = false);
+	// When false, the caller compiles depended scripts itself (GDScriptCache::finish_compiling)
+	// after releasing this script's parser, so dependency chains do not keep every syntax tree alive.
+	bool finish_dependencies = true;
 
 	String get_error() const;
 	int get_error_line() const;

@@ -3316,6 +3316,9 @@ Error GDScriptCompiler::compile(const GDScriptParser *p_parser, GDScript *p_scri
 		GDScriptCache::add_static_script(p_script);
 	}
 
+	if (!finish_dependencies) {
+		return OK;
+	}
 	err = GDScriptCache::finish_compiling(main_script->path);
 	if (err) {
 		_set_error(R"(Failed to compile depended scripts.)", nullptr);

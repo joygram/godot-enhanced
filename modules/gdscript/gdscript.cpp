@@ -740,6 +740,11 @@ Error GDScript::reload(bool p_keep_state) {
 	}
 	reloading = true;
 
+	struct ReloadScope {
+		ReloadScope() { GDScriptCache::enter_reload(); }
+		~ReloadScope() { GDScriptCache::exit_reload(); }
+	} reload_scope;
+
 	bool has_instances;
 	{
 		MutexLock lock(GDScriptLanguage::singleton->mutex);
@@ -809,8 +814,9 @@ Error GDScript::reload(bool p_keep_state) {
 #endif
 
 	valid = false;
-	GDScriptParser parser;
 	Error err;
+	{
+	GDScriptParser parser;
 	if (!binary_tokens.is_empty()) {
 		err = parser.parse_binary(binary_tokens, path);
 	} else {
@@ -846,6 +852,7 @@ Error GDScript::reload(bool p_keep_state) {
 	can_run = ScriptServer::is_scripting_enabled() || parser.is_tool();
 
 	GDScriptCompiler compiler;
+	compiler.finish_dependencies = false;
 	err = compiler.compile(&parser, this, p_keep_state);
 
 	if (err) {
@@ -878,6 +885,17 @@ Error GDScript::reload(bool p_keep_state) {
 		}
 	}
 #endif
+	}
+
+	// This script's parser is released above; compiling dependencies now keeps only their own trees alive.
+	err = GDScriptCache::finish_compiling(path);
+	if (err) {
+		_err_print_error("GDScript::reload", path.is_empty() ? "built-in" : (const char *)path.utf8().get_data(), 0, "Compile Error: Failed to compile depended scripts.", false, ERR_HANDLER_SCRIPT);
+		if (can_run) {
+			reloading = false;
+			return ERR_COMPILATION_FAILED;
+		}
+	}
 
 	if (can_run) {
 		err = _static_init();

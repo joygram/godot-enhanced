@@ -456,6 +456,47 @@ void GDScriptCache::remove_static_script(const String &p_fqcn) {
 	singleton->static_gdscript_cache.erase(p_fqcn);
 }
 
+void GDScriptCache::enter_reload() {
+	if (singleton == nullptr) {
+		return;
+	}
+	MutexLock lock(singleton->mutex);
+	singleton->reload_depth++;
+}
+
+void GDScriptCache::exit_reload() {
+	if (singleton == nullptr) {
+		return;
+	}
+	MutexLock lock(singleton->mutex);
+	if (--singleton->reload_depth > 0 || singleton->cleared) {
+		return;
+	}
+
+	for (const KeyValue<String, Vector<ObjectID>> &KV : singleton->abandoned_parser_map) {
+		for (ObjectID parser_ref_id : KV.value) {
+			Ref<GDScriptParserRef> parser_ref = { ObjectDB::get_instance(parser_ref_id) };
+			if (parser_ref.is_valid()) {
+				parser_ref->clear();
+			}
+		}
+	}
+	singleton->abandoned_parser_map.clear();
+
+	// Hold references while clearing: dropping a parser releases the ones it depends on.
+	LocalVector<Ref<GDScriptParserRef>> parser_refs;
+	for (KeyValue<String, GDScriptParserRef *> &E : singleton->parser_map) {
+		parser_refs.push_back(Ref<GDScriptParserRef>(E.value));
+	}
+	for (Ref<GDScriptParserRef> &E : parser_refs) {
+		if (E.is_valid()) {
+			E->clear();
+		}
+	}
+	parser_refs.clear();
+	singleton->parser_inverse_dependencies.clear();
+}
+
 void GDScriptCache::clear() {
 	if (singleton == nullptr) {
 		return;

@@ -100,8 +100,14 @@ class GDScriptCache {
 	static GDScriptCache *singleton;
 
 	bool cleared = false;
+	int reload_depth = 0;
 
 public:
+	// Parsers of mutually dependent scripts reference each other, so their syntax trees
+	// outlive compilation. Released once the outermost reload has finished.
+	static void enter_reload();
+	static void exit_reload();
+
 	static const int BINARY_MUTEX_TAG = 2;
 
 private:
