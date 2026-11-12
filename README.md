@@ -37,6 +37,13 @@ git apply patches/godot-4.7.2-gdscript-parser-release.patch
 
 Patches are independent. Apply either one alone.
 
+## Prebuilt Web export template
+
+- GitHub Actions ([ime_web_template.yml](.github/workflows/ime_web_template.yml)) builds the Web template from this branch and publishes it on [Releases](https://github.com/joygram/godot-ime/releases).
+- Assets: `godot.web.template_release.wasm32.nothreads.dlink.zip` (GDExtension support), `godot.web.template_release.wasm32.nothreads.zip`.
+- Use: Web export preset → Custom Template → Release → the zip.
+- Emscripten 4.0.11. With dlink, your GDExtension web builds must use the same version.
+
 ## Keeping up with upstream
 
 ```sh
@@ -62,4 +69,5 @@ Godot 4.7.2 공식 소스에 패치 2개를 얹은 빌드. 업스트림 이력 �
 - **Windows 한글 IME 패치**: 한글 음절 확정 후 다음 글자 입력 시 커서가 전진하지 않던 문제 수정. 편집기·게임 입력창 공통. → [상세](patches/windows-ime-queued-key.md)
 - **GDScript 파서 해제 패치 (웹/WASM)**: 서로 의존하는 스크립트의 구문 트리가 컴파일 뒤에도 남던 것을 해제. 부팅 컴파일 최고 메모리 감소. → [상세](patches/gdscript-parser-release.md)
 - 사용: `4.7.2-ime` 브랜치 빌드, 또는 `patches/*.patch` 를 4.7.2 소스에 `git apply`.
+- 웹 템플릿: GitHub Actions 빌드 → [Releases](https://github.com/joygram/godot-ime/releases) 의 zip 을 웹 내보내기 커스텀 템플릿으로 지정.
 - 검색어: 고도 한글 입력, 고도 엔진 한글 IME, Godot 한글 깨짐·씹힘, 커서 안 움직임, 고도 웹 빌드 메모리.

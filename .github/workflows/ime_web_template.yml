@@ -1,0 +1,62 @@
+name: 🌐 Web template (patched)
+
+# Builds the Web export template from this branch (GDScript parser release patch included)
+# and publishes it as a release asset. Matches the setup used by the rpg2d project:
+# dlink enabled (GDExtension, e.g. godot-sqlite), no threads.
+on:
+  workflow_dispatch:
+    inputs:
+      emscripten:
+        description: "Emscripten version (must match GDExtension web builds for dlink)"
+        default: "4.0.11"
+  push:
+    branches: ["4.7.2-ime"]
+    paths:
+      - "modules/gdscript/**"
+      - "platform/web/**"
+      - ".github/workflows/ime_web_template.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release tag
+        id: tag
+        run: echo "tag=web-template-4.7.2-ime-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Skip when already released
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: mymindstorm/setup-emsdk@v14
+        if: steps.existing.outputs.found != 'true'
+        with:
+          version: ${{ inputs.emscripten || '4.0.11' }}
+
+      - name: Build web templates
+        if: steps.existing.outputs.found != 'true'
+        run: |
+          pip install scons
+          scons platform=web target=template_release dlink_enabled=yes threads=no -j"$(nproc)"
+          scons platform=web target=template_release threads=no -j"$(nproc)"
+
+      - name: Publish release
+        if: steps.existing.outputs.found != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            bin/godot.web.template_release.wasm32.nothreads.dlink.zip \
+            bin/godot.web.template_release.wasm32.nothreads.zip \
+            --target "$GITHUB_SHA" \
+            --title "Web template 4.7.2-ime (${{ steps.tag.outputs.tag }})" \
+            --notes "Godot 4.7.2 web export templates (release, no threads; with and without dlink) built from this branch with the GDScript parser release patch. Install: rename to web_nothreads_release.zip / web_dlink_nothreads_release.zip and set as custom template in the Web export preset."

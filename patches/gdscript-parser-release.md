@@ -21,6 +21,18 @@
 - `GDScriptCompiler::finish_dependencies` flag: reload calls `GDScriptCache::finish_compiling` itself, after its own parser is released.
 - `GDScriptCache::enter_reload` / `exit_reload`: reload depth counter. When the outermost reload ends, all cached parser refs are cleared, breaking the reference cycles.
 
+## Stages
+
+Built in two steps; each step was shipped as a web template via GitHub Actions in the rpg2d project. This branch carries the final (stage 2) patch, which includes stage 1.
+
+| Stage | Change | Patch sha256 (prefix) |
+|---|---|---|
+| 1 | Clear cached parser refs when the outermost reload ends (`enter_reload` / `exit_reload`) | `10b4f21d12ad` |
+| 2 | + Compile depended scripts after this script's parser is released (`finish_dependencies = false`) | `541da865d923` |
+
+- Stage 1 alone: trees freed after boot, but peak during boot compile still stacked the whole chain.
+- Stage 2: removes that stacking → lower peak.
+
 ## Result
 
 - Syntax trees freed after the outermost reload instead of living until cache clear.
