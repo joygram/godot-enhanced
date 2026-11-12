@@ -35,7 +35,7 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 git apply patches/godot-4.7.2-gdscript-parser-release.patch
 ```
 
-Patches are independent. Apply either one alone.
+Apply both (as above), or only the one you need — each patch also applies on its own, in any order.
 
 ## Prebuilt Web export template
 
@@ -82,7 +82,9 @@ Godot 4.7.2 공식 소스에 패치 2개를 얹은 빌드. 업스트림 이력 �
 
 - Windows 편집기(MSVC): `python -m SCons platform=windows target=editor arch=x86_64`
 - 웹 템플릿(Emscripten): `scons platform=web target=template_release`
-- 패치는 서로 독립 → 하나만 적용 가능.
+- 패치 적용: 두 개 모두, 또는 필요한 것 하나씩 따로 가능. 순서 무관.
+  - 둘 다: `git apply patches/godot-4.7.2-windows-ime-queued-key.patch patches/godot-4.7.2-gdscript-parser-release.patch`
+  - 하나씩: 해당 `.patch` 파일만 `git apply`.
 
 ### 업스트림 따라가기
 
