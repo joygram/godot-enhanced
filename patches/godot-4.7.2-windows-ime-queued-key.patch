@@ -1,0 +1,14 @@
+diff --git a/platform/windows/display_server_windows.cpp b/platform/windows/display_server_windows.cpp
+index e8217861..4ee2e076 100644
+--- a/platform/windows/display_server_windows.cpp
++++ b/platform/windows/display_server_windows.cpp
+@@ -6836,7 +6836,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
+ 		case WM_IME_STARTCOMPOSITION: {
+ 			if (windows[window_id].ime_active) {
+ 				windows[window_id].ime_in_progress = true;
+-				if (key_event_pos > 0) {
++				if (key_event_pos > 0 &&
++						(key_event_buffer[key_event_pos - 1].uMsg == WM_KEYDOWN || key_event_buffer[key_event_pos - 1].uMsg == WM_SYSKEYDOWN)) {
+ 					key_event_pos--;
+ 				}
+ 			}
