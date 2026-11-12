@@ -6836,7 +6836,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		case WM_IME_STARTCOMPOSITION: {
 			if (windows[window_id].ime_active) {
 				windows[window_id].ime_in_progress = true;
-				if (key_event_pos > 0) {
+				if (key_event_pos > 0 &&
+						(key_event_buffer[key_event_pos - 1].uMsg == WM_KEYDOWN || key_event_buffer[key_event_pos - 1].uMsg == WM_SYSKEYDOWN)) {
 					key_event_pos--;
 				}
 			}
