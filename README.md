@@ -71,3 +71,31 @@ Godot 4.7.2 공식 소스에 패치 2개를 얹은 빌드. 업스트림 이력 �
 - 사용: `4.7.2-ime` 브랜치 빌드, 또는 `patches/*.patch` 를 4.7.2 소스에 `git apply`.
 - 웹 템플릿: GitHub Actions 빌드 → [Releases](https://github.com/joygram/godot-ime/releases) 의 zip 을 웹 내보내기 커스텀 템플릿으로 지정.
 - 검색어: 고도 한글 입력, 고도 엔진 한글 IME, Godot 한글 깨짐·씹힘, 커서 안 움직임, 고도 웹 빌드 메모리.
+
+### 브랜치
+
+- `4.7.2-ime` (기본): `4.7.2-stable` (`ed1daf0bf`) + 패치. 패치당 커밋 1개.
+- `master`: 업스트림 `master` 미러, 수정 없음.
+- 업스트림 태그 유지 (`4.7.2-stable` 등).
+
+### 빌드
+
+- Windows 편집기(MSVC): `python -m SCons platform=windows target=editor arch=x86_64`
+- 웹 템플릿(Emscripten): `scons platform=web target=template_release`
+- 패치는 서로 독립 → 하나만 적용 가능.
+
+### 업스트림 따라가기
+
+- `git remote add upstream https://github.com/godotengine/godot.git` → `git fetch upstream --tags`
+- 새 버전 브랜치 생성: `git checkout -b <버전>-ime <버전>-stable`
+- 패치 이식: `git cherry-pick 4.7.2-stable..origin/4.7.2-ime`
+
+### 상태
+
+- 공식 Godot 빌드 아님. 업스트림 미제출.
+- Godot 4.7.2 에서만 확인. 다른 버전 미검증.
+- 라이선스: Godot 과 동일 MIT.
+
+---
+
+> 본 작업은 AI와 함께함 · This work was made with AI assistance.
