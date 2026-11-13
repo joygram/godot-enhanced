@@ -1,6 +1,7 @@
 import glob
 import os
 import os.path
+import re
 import shutil
 
 
@@ -90,7 +91,10 @@ def configure(env, env_mono):
         if env["dlink_enabled"]:
             env_thirdparty.Append(CPPDEFINES=["WASM_SUPPORTS_DLOPEN"])
         env_thirdparty.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "wasm"))
-        get_runtime_pack_project_includes = os.path.join(get_runtime_pack_project_path, "obj", "Release", "net9.0", rid, "wasm", "for-publish")
+        # The target framework is set in one place, GetRuntimePack.csproj. Game projects must target the same one.
+        with open(os.path.join(get_runtime_pack_project_path, "GetRuntimePack.csproj"), encoding="utf-8") as f:
+            runtime_pack_tfm = re.search(r"<TargetFramework>([^<]+)</TargetFramework>", f.read()).group(1)
+        get_runtime_pack_project_includes = os.path.join(get_runtime_pack_project_path, "obj", "Release", runtime_pack_tfm, rid, "wasm", "for-publish")
 
         aot_dir = env.get("mono_wasm_aot_dir", "")
         if aot_dir:

@@ -5,7 +5,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <!-- Game projects exported for the web must target the same framework. -->
+    <TargetFramework>net11.0</TargetFramework>
   </PropertyGroup>
 
   <!-- This plus a non-empty $(RuntimeIdentifier) are enough to choose Mono. -->
