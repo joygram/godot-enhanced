@@ -63,19 +63,35 @@ createServer(async (req, res) => {
 		await new Promise((done) => req.pipe(createWriteStream(bundle)).on("finish", done));
 		const sha = (url.searchParams.get("sha") || "").replace(/[^0-9a-f]/g, "");
 		const args = (url.searchParams.get("args") || "").replace(/[^\w=.,+\- ]/g, "");
+		// 검사 = 저장소의 misc/scripts/agent_tests/<이름>.sh 만 (목록 밖 명령 실행 안 함)
+		const tests = (url.searchParams.get("test") || "").split(",").map((t) => t.replace(/[^a-z0-9-]/g, "")).filter(Boolean);
+		const release = (url.searchParams.get("release") || "").replace(/[^a-z-]/g, "");
 		const jobs = "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)";
-		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args}\n`);
+		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args || "(없음)"} test=${tests.join(",") || "-"} release=${release || "-"}\n`);
 		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
 		const fetchBundle = statSync(bundle).size > 0 ? `git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && ` : "";
-		const code = await sh(
-			`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start" && ${pre}scons ${args} -j${jobs}`,
-			log,
-		);
-		const files = code === 0
+		const build = args ? ` && ${pre}scons ${args} -j${jobs}` : "";
+		let code = await sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"${build}`, log);
+		const files = code === 0 && args
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
 			: [];
 		for (const f of files) copyFileSync(join(root, "bin", f), join(dir, f));
-		result = { code, job, files };
+		// 빌드 → 검사 → 통과 시 릴리스 업로드
+		const checks = {};
+		for (const t of tests) {
+			if (code !== 0) break;
+			if (!existsSync(join(root, "misc", "scripts", "agent_tests", `${t}.sh`))) { log.write(`[agent] ✘ 검사 없음: ${t}\n`); code = 2; break; }
+			log.write(`\n[agent] ── 검사 ${t}\n`);
+			const c = await sh(`${pre}JOB_DIR="${dir}" bash misc/scripts/agent_tests/${t}.sh`, log);
+			checks[t] = c === 0 ? "pass" : "fail";
+			if (c !== 0) code = c;
+		}
+		for (const f of readdirSync(dir)) if (!files.includes(f) && /\.(png|json|txt)$/.test(f) && !["result.json", "log.txt"].includes(f)) files.push(f);
+		if (code === 0 && release) {
+			log.write(`\n[agent] ── 릴리스 ${release}\n`);
+			code = await sh(`JOB_DIR="${dir}" bash misc/scripts/agent_release.sh ${release}`, log);
+		}
+		result = { code, job, files, checks, release: release && code === 0 ? release : null };
 	} catch (e) {
 		result = { code: 1, job, files: [], error: String(e) };
 	} finally {
