@@ -282,8 +282,12 @@ namespace GodotTools.Export
                         Directory.CreateDirectory(publishOutputDir);
 
                     // Execute dotnet publish.
+                    // Web: threaded or single-threaded runtime, following the preset's "Thread Support".
+                    string[] extraProperties = platform == OS.Platforms.Web
+                        ? [$"GodotWebThreads={((bool)GetOption("variant/thread_support") ? "true" : "false")}"]
+                        : [];
                     if (!BuildManager.PublishProjectBlocking(buildConfig, platform,
-                            runtimeIdentifier, publishOutputDir, includeDebugSymbols))
+                            runtimeIdentifier, publishOutputDir, includeDebugSymbols, extraProperties))
                     {
                         throw new InvalidOperationException("Failed to build project. Check MSBuild panel for details.");
                     }
