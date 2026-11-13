@@ -1,0 +1,68 @@
+name: 🧪 C# web template check (patched)
+
+# Builds only the mono web template (no editors) to check the C# web export patch quickly.
+# The C# glue is platform independent, so it is taken from an earlier run of enhanced_dotnet_release.yml
+# instead of building a Linux editor again.
+on:
+  workflow_dispatch:
+    inputs:
+      glue_run_id:
+        description: "Run id of an enhanced_dotnet_release run that uploaded the 'glue' artifact"
+        required: true
+        default: "43360027715"
+      target:
+        description: "Template target"
+        default: "template_debug"
+        type: choice
+        options: [template_debug, template_release]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  # Same Emscripten as the .NET 11 Mono runtime pack (dotnet/runtime release/11.0: 6.0.2).
+  EMSDK_VERSION: "6.0.2"
+
+jobs:
+  web-template:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 11.0.x
+      # GetRuntimePack/global.json pins SDK 11, whose wasm-tools workload covers net11.0.
+      - name: Install wasm-tools workload (SDK 11)
+        working-directory: modules/mono/runtime/GetRuntimePack
+        run: |
+          dotnet --version
+          dotnet workload install wasm-tools
+          dotnet workload list
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: glue
+          path: modules/mono/glue
+          run-id: ${{ inputs.glue_run_id }}
+          github-token: ${{ github.token }}
+      - name: Build C# assemblies and NuGet packages
+        run: |
+          pip install scons
+          python modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget
+      - name: Build web template
+        run: |
+          flags="optimize=speed lto=none"
+          [ "${{ inputs.target }}" = "template_release" ] && flags="optimize=speed lto=thin"
+          scons platform=web target=${{ inputs.target }} module_mono_enabled=yes $flags ccflags="-DNDEBUG" linkflags="-sMALLOC=mimalloc"
+      - run: ls -la bin/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ inputs.target }}
+          path: bin/godot.web.${{ inputs.target }}.wasm32.mono.zip

@@ -610,10 +610,10 @@ index 8805ab6f0a..d259dcf685 100644
  #endif
 diff --git a/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
 new file mode 100644
-index 0000000000..f9a9a4f515
+index 0000000000..39219887b8
 --- /dev/null
 +++ b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,72 @@
 +<!--
 +  Adapted from:
 +  https://github.com/lambdageek/monovm-embed-sample/blob/c35f945509b0d1e4f4412a7076c9e769708c3ff1/src/GetRuntimePack/GetRuntimePack.csproj
@@ -634,6 +634,18 @@ index 0000000000..f9a9a4f515
 +  <PropertyGroup>
 +    <AssemblyName>GodotSharp</AssemblyName>
 +    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
++  </PropertyGroup>
++
++  <!--
++    The WebAssembly SDK only treats the project as a browser-wasm app (IsBrowserWasmProject) when OutputType is
++    not Library, and only generates wasm_m2n_invoke.g.h, pinvoke-table.h and icall-table.h (included by the
++    runtime's runtime.c) when it builds natively. The .NET 11 SDK no longer does either on its own for this project.
++  -->
++  <PropertyGroup>
++    <OutputType>Exe</OutputType>
++  </PropertyGroup>
++  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
++    <WasmBuildNative>true</WasmBuildNative>
 +  </PropertyGroup>
 +
 +  <!-- Configuration for the Mono WASM runtime. Must match the features supported by the Godot build. -->
