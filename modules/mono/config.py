@@ -15,6 +15,12 @@ def get_opts(platform):
             + "Its AOT objects and generated tables are linked into the template, which then only suits that build.",
             "",
         ),
+        (
+            "mono_wasm_native_packages",
+            "Web only: comma-separated NuGet packages with native browser-wasm libraries (e.g. "
+            + "SQLitePCLRaw.bundle_e_sqlite3@2.1.11). Their native code and P/Invoke entries are linked into the template.",
+            "",
+        ),
     ]
 
 

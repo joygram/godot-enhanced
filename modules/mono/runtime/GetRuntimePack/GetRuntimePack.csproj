@@ -57,6 +57,22 @@
     <TrimmerRootAssembly Include="System.Private.CoreLib" />
   </ItemGroup>
 
+  <!--
+    NativePackages.props: written by mono_configure.py from the SCons option mono_wasm_native_packages
+    (PackageReference items). Their assemblies are kept so the generator puts their P/Invokes in
+    pinvoke-table.h, and their native browser-wasm libraries (NativeFileReference) are listed for
+    mono_configure.py to link.
+  -->
+  <Import Project="NativePackages.props" Condition="Exists('NativePackages.props')" />
+  <Target Name="GodotKeepNativePackageAssemblies" BeforeTargets="PrepareForILLink">
+    <ItemGroup>
+      <TrimmerRootAssembly Include="@(ReferenceCopyLocalPaths->'%(Filename)')" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' and '%(ReferenceCopyLocalPaths.NuGetPackageId)' != ''" />
+    </ItemGroup>
+  </Target>
+  <Target Name="GodotListNativeReferences" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
+    <WriteLinesToFile Overwrite="true" File="bin\$(RuntimeIdentifier)\native-references.txt" Lines="@(NativeFileReference->'%(FullPath)')" />
+  </Target>
+
   <Target Name="EchoRuntimeLocation" AfterTargets="ResolveFrameworkReferences">
     <Error Condition="'$(RuntimeIdentifier)' == ''" Message="Need to set RuntimeIdentifier to the target platform RID" />
     <ItemGroup>
