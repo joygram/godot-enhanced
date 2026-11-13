@@ -78,7 +78,7 @@
 /misc/                                        @godotengine/buildsystem
 /misc/extension_api_validation/               @godotengine/gdextension @godotengine/dotnet
 
-# Fork patches (godot-ime)
+# Fork patches (godot-enhanced)
 
 /patches/                                     @joygram
 

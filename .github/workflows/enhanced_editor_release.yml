@@ -1,7 +1,7 @@
 name: 🧰 Editor release (patched)
 
 # Builds the patched Godot editor for macOS (universal) and Linux and attaches the zips
-# to the release editor-<version>-ime-<commit10>. Windows x86_64 is built locally (MSVC).
+# to the release editor-<version>-enhanced-<commit10>. Windows x86_64 is built locally (MSVC).
 # Asset layout matches a SCons bin/ folder: godot.<platform>.editor.<arch>[.exe] or Godot.app.
 on:
   workflow_dispatch:
@@ -33,14 +33,14 @@ jobs:
         run: |
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=editor-${GODOT_VERSION}-ime-${sha::10}" >> "$GITHUB_OUTPUT"
+          echo "tag=editor-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.ref.outputs.tag }}"
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "${{ steps.ref.outputs.sha }}" \
-            --title "Godot ${GODOT_VERSION}-ime editor (${tag##*-})" --notes "Patched Godot ${GODOT_VERSION} editor builds."
+            --title "Godot ${GODOT_VERSION}-enhanced editor (${tag##*-})" --notes "Patched Godot ${GODOT_VERSION} editor builds."
 
   macos:
     needs: prepare
@@ -62,12 +62,12 @@ jobs:
           mkdir pkg
           app=$(ls -d bin/*.app | head -1)
           cp -R "$app" pkg/Godot.app
-          (cd pkg && ditto -c -k --keepParent Godot.app "../godot-${GODOT_VERSION}-ime.macos.editor.arm64.zip")
-          cp "godot-${GODOT_VERSION}-ime.macos.editor.arm64.zip" "godot-${GODOT_VERSION}-ime.macos.editor.x86_64.zip"
+          (cd pkg && ditto -c -k --keepParent Godot.app "../godot-${GODOT_VERSION}-enhanced.macos.editor.arm64.zip")
+          cp "godot-${GODOT_VERSION}-enhanced.macos.editor.arm64.zip" "godot-${GODOT_VERSION}-enhanced.macos.editor.x86_64.zip"
       - name: Upload
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*-ime.macos.editor.*.zip --clobber
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*-enhanced.macos.editor.*.zip --clobber
 
   linux:
     needs: prepare
@@ -90,6 +90,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd bin
-          zip -9 "../godot-${GODOT_VERSION}-ime.linuxbsd.editor.x86_64.zip" godot.linuxbsd.editor.x86_64
+          zip -9 "../godot-${GODOT_VERSION}-enhanced.linuxbsd.editor.x86_64.zip" godot.linuxbsd.editor.x86_64
           cd ..
-          gh release upload "${{ needs.prepare.outputs.tag }}" "godot-${GODOT_VERSION}-ime.linuxbsd.editor.x86_64.zip" --clobber
+          gh release upload "${{ needs.prepare.outputs.tag }}" "godot-${GODOT_VERSION}-enhanced.linuxbsd.editor.x86_64.zip" --clobber

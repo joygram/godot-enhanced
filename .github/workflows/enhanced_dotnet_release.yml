@@ -3,7 +3,7 @@ name: 🧩 C# web export release (patched)
 # Builds the C# (.NET) web export kit from this branch:
 #   - mono web templates (release + debug, threaded) and the NuGet packages,
 #   - C# editors for Windows x86_64, macOS arm64 and Linux x86_64,
-# and publishes one zip per platform on the release dotnet-web-<version>-ime-<commit10>.
+# and publishes one zip per platform on the release dotnet-web-<version>-enhanced-<commit10>.
 # Build order follows ComplexRobot/godot-dotnet-web-export: glue -> assemblies -> web templates.
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
         run: |
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=dotnet-web-${GODOT_VERSION}-ime-${sha::10}" >> "$GITHUB_OUTPUT"
+          echo "tag=dotnet-web-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
 
   # Linux C# editor: only needed to generate the C# glue (platform independent) and as the Linux editor.
   editor-linux:
@@ -189,7 +189,7 @@ jobs:
           cp art/csharp-assemblies/nuget/* "$common/nuget/"
           cp "$kit"/Program.cs "$kit"/global.json "$kit"/README.txt "$kit"/install.sh "$kit"/install.bat "$common/"
 
-          name="godot-${GODOT_VERSION}-ime.dotnet-web"
+          name="godot-${GODOT_VERSION}-enhanced.dotnet-web"
           # Windows
           d="$name.windows-x86_64"; mkdir "$d"; cp -r "$common"/. "$d/"
           cp art/editor-windows/*.exe "$d/"
@@ -209,7 +209,7 @@ jobs:
         run: |
           tag="${{ needs.prepare.outputs.tag }}"
           gh release create "$tag" --target "${{ needs.prepare.outputs.sha }}" \
-            --title "C# web export kit ${GODOT_VERSION}-ime (${tag##*-})" \
+            --title "C# web export kit ${GODOT_VERSION}-enhanced (${tag##*-})" \
             --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net11.0 (.NET 11 SDK), copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
             godot-*.zip
       - uses: actions/upload-artifact@v4
@@ -229,7 +229,7 @@ jobs:
           path: art
       - name: Assemble macOS kit
         run: |
-          name="godot-${GODOT_VERSION}-ime.dotnet-web.macos-arm64"
+          name="godot-${GODOT_VERSION}-enhanced.dotnet-web.macos-arm64"
           mkdir "$name"
           unzip -q art/kit-common/kit-common.zip -d "$name"
           app="$name/Godot.app"

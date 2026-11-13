@@ -22,7 +22,7 @@ jobs:
 
       - name: Release tag
         id: tag
-        run: echo "tag=web-template-4.7.2-ime-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=web-template-4.7.2-enhanced-$(git rev-parse --short=10 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Skip when already released
         id: existing
@@ -52,5 +52,5 @@ jobs:
             bin/godot.web.template_release.wasm32.nothreads.dlink.zip \
             bin/godot.web.template_release.wasm32.nothreads.zip \
             --target "$GITHUB_SHA" \
-            --title "Web template 4.7.2-ime (${{ steps.tag.outputs.tag }})" \
+            --title "Web template 4.7.2-enhanced (${{ steps.tag.outputs.tag }})" \
             --notes "Godot 4.7.2 web export templates (release, no threads; with and without dlink) built from this branch with the GDScript parser release patch. Install: rename to web_nothreads_release.zip / web_dlink_nothreads_release.zip and set as custom template in the Web export preset."

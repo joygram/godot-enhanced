@@ -1,7 +1,7 @@
-Godot 4.7.2-ime — C# (.NET) web export kit
+Godot 4.7.2-enhanced — C# (.NET) web export kit
 ==========================================
 
-Experimental. See https://github.com/joygram/godot-ime/blob/4.7.2-ime/patches/dotnet-web-export.md
+Experimental. See https://github.com/joygram/godot-enhanced/blob/4.7.2-enhanced/patches/dotnet-web-export.md
 
 1. Extract this zip.
 2. Run install.bat (Windows) or `bash install.sh` (macOS / Linux).

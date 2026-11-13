@@ -95,7 +95,7 @@ scons platform=web target=template_debug module_mono_enabled=yes
 ## Status
 
 - Patch application: checked.
-- Build and an actual C# web export from this branch: not yet verified here. Release assets will be listed on [Releases](https://github.com/joygram/godot-ime/releases) after the workflow `ime_dotnet_release.yml` has run successfully.
+- Build and an actual C# web export from this branch: not yet verified here. Release assets will be listed on [Releases](https://github.com/joygram/godot-enhanced/releases) after the workflow `enhanced_dotnet_release.yml` has run successfully.
 
 ## 한국어
 
@@ -164,7 +164,7 @@ scons platform=web target=template_debug module_mono_enabled=yes
 ### 상태
 
 - 패치 적용: 확인했습니다. 단독으로도, 다른 두 패치와 함께도, 순서와 무관하게 적용됩니다.
-- 이 브랜치에서의 빌드와 실제 C# 웹 내보내기: 아직 검증하지 않았습니다. `ime_dotnet_release.yml` 워크플로가 성공하면 [Releases](https://github.com/joygram/godot-ime/releases)에 결과물을 올리고 이 문서를 갱신합니다.
+- 이 브랜치에서의 빌드와 실제 C# 웹 내보내기: 아직 검증하지 않았습니다. `enhanced_dotnet_release.yml` 워크플로가 성공하면 [Releases](https://github.com/joygram/godot-enhanced/releases)에 결과물을 올리고 이 문서를 갱신합니다.
 
 ---
 
