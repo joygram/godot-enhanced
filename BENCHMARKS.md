@@ -149,6 +149,19 @@
 - 목록: `misc/static_gdextensions.json` (repo·ref·진입 함수)
 - 사전 빌드: `remote_build.mjs <host> --test static-gdext` → 4변형 .a → 릴리스 `static-gdext-emsdk<버전>`
 - 템플릿 빌드 시 .a 없으면 릴리스에서 자동 받음 (`STATIC_GDEXT_DIR`, 기본 `~/static-gdext`)
+
+### 엔진 빌드 캐시 (모듈 조립)
+
+- 에이전트 빌드는 `cache_path=~/godot-cache/<platform>` 자동 사용, 비어 있으면 릴리스에서 받음
+- 캐시 올리기: `remote_build.mjs <host> <scons 인자> --test engine-cache` → 릴리스 `engine-cache-web-emsdk<버전>`
+- 모듈 조합: `module_<이름>_enabled=no` + `static_gdextensions=sqlite` → 바뀐 부분만 컴파일
+
+| 실측 (Mac, Linux 가 올린 캐시) | 값 |
+|---|---|
+| 캐시 크기 | 39MB 압축 / 150MB |
+| 캐시에서 받음 | 1,932개 |
+| 새로 컴파일 | 14개 (jolt 제거로 바뀐 파일) |
+| scons 시간 | 1분 18초 |
 - 새 옵션 `mono_wasm_native_packages="Id/Version,..."`: NuGet 네이티브 라이브러리 링크
 
 ## 남은 것
