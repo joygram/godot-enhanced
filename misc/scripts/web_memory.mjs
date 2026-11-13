@@ -24,8 +24,8 @@ WebAssembly.Memory=function(d){const m=new M(d);globalThis.__mems.push(m);return
 const grab=r=>{const i=r&&(r.instance||r);if(i&&i.exports)for(const v of Object.values(i.exports))if(v instanceof M&&!globalThis.__mems.includes(v))globalThis.__mems.push(v);return r};
 for(const k of["instantiate","instantiateStreaming"]){const f=WebAssembly[k];if(f)WebAssembly[k]=(...a)=>f.apply(WebAssembly,a).then(grab)}
 const I=WebAssembly.Instance;WebAssembly.Instance=function(m,imp){return grab(new I(m,imp))};WebAssembly.Instance.prototype=I.prototype;
-const L=globalThis.__logs=[];for(const k of["log","warn","error"]){const o=console[k].bind(console);console[k]=(...a)=>{L.push(a.join(" "));o(...a)}}
-addEventListener("error",e=>L.push("EXC "+(e.message||e.error)));addEventListener("unhandledrejection",e=>L.push("EXC "+e.reason));})();</script>`;
+const L=globalThis.__logs=[];for(const k of["log","warn","error"]){const o=console[k].bind(console);console[k]=(...a)=>{L.push(a.map(x=>x&&x.stack?x.stack:x).join(" "));o(...a)}}
+addEventListener("error",e=>L.push("EXC "+(e.message||e.error)+" "+String(e.error&&e.error.stack||"").slice(0,1500)));addEventListener("unhandledrejection",e=>L.push("EXC "+e.reason+" "+String(e.reason&&e.reason.stack||"").slice(0,1500)));})();</script>`;
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm" };
 const server = createServer((req, res) => {
 	const file = join(web, decodeURIComponent(new URL(req.url, "http://x").pathname));
@@ -110,7 +110,7 @@ const errors = logs.filter((l) => /^EXC|SCRIPT ERROR|Aborted\(|RuntimeError|Unha
 const result = {
 	browser: browserName, wasm_heap_peak_mb: Math.max(0, ...samples.map((s) => s.wasm_mb)), js_heap_mb: samples.at(-1)?.js_mb ?? 0,
 	errors: errors.slice(0, 10), marks: logs.filter((l) => /boot ok|memstat|peak|\bAOT\b|db_ms|asset_ms/i.test(l)).slice(-10), samples,
-		tail: logs.slice(-15).map((l) => l.slice(0, 300)),
+		tail: logs.slice(-15).map((l) => l.slice(0, 3000)),
 };
 writeFileSync(outJson, JSON.stringify(result, null, 2));
 console.log(`[${browserName}] wasm 힙 최대 ${result.wasm_heap_peak_mb}MB, 오류 ${errors.length}건 ${result.marks.at(-1) ?? ""} → ${outJson}`);

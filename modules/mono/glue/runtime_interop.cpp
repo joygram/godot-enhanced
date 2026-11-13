@@ -86,9 +86,11 @@ Object *godotsharp_engine_get_singleton(const String *p_name) {
 	return Engine::get_singleton()->get_singleton_object(*p_name);
 }
 
-int32_t godotsharp_stack_info_vector_resize(
+// Returns Error as int64_t: the C# side declares it as Godot.Error, a long enum. On wasm32 a 32-bit
+// return here traps the call (function signature mismatch); desktop ABIs happened to tolerate it.
+int64_t godotsharp_stack_info_vector_resize(
 		Vector<ScriptLanguage::StackInfo> *p_stack_info_vector, int p_size) {
-	return (int32_t)p_stack_info_vector->resize(p_size);
+	return (int64_t)p_stack_info_vector->resize(p_size);
 }
 
 void godotsharp_stack_info_vector_destroy(
@@ -217,9 +219,10 @@ void godotsharp_internal_refcounted_disposed(Object *p_ptr, GCHandleIntPtr p_gch
 	}
 }
 
-int32_t godotsharp_internal_signal_awaiter_connect(Object *p_source, StringName *p_signal, Object *p_target, GCHandleIntPtr p_awaiter_handle_ptr) {
+// Returns Error as int64_t (Godot.Error is a long enum on the C# side, see godotsharp_stack_info_vector_resize).
+int64_t godotsharp_internal_signal_awaiter_connect(Object *p_source, StringName *p_signal, Object *p_target, GCHandleIntPtr p_awaiter_handle_ptr) {
 	StringName signal = p_signal ? *p_signal : StringName();
-	return (int32_t)gd_mono_connect_signal_awaiter(p_source, signal, p_target, p_awaiter_handle_ptr);
+	return (int64_t)gd_mono_connect_signal_awaiter(p_source, signal, p_target, p_awaiter_handle_ptr);
 }
 
 GCHandleIntPtr godotsharp_internal_unmanaged_get_script_instance_managed(Object *p_unmanaged, bool *r_has_cs_script_instance) {
@@ -1151,8 +1154,9 @@ void godotsharp_array_remove_at(Array *p_self, int32_t p_index) {
 	p_self->remove_at(p_index);
 }
 
-int32_t godotsharp_array_resize(Array *p_self, int32_t p_new_size) {
-	return (int32_t)p_self->resize(p_new_size);
+// Returns Error as int64_t (Godot.Error is a long enum on the C# side, see godotsharp_stack_info_vector_resize).
+int64_t godotsharp_array_resize(Array *p_self, int32_t p_new_size) {
+	return (int64_t)p_self->resize(p_new_size);
 }
 
 void godotsharp_array_reverse(Array *p_self) {
