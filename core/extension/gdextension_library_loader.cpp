@@ -175,10 +175,26 @@ String GDExtensionLibraryLoader::find_extension_library(const String &p_path, Re
 	return String();
 }
 
+GDExtensionInitializationFunction GDExtensionLibraryLoader::find_static_entry(const String &p_symbol) {
+	for (const GDExtensionStaticEntry *e = gdextension_static_entries; e->symbol; e++) {
+		if (p_symbol == e->symbol) {
+			return e->function;
+		}
+	}
+	return nullptr;
+}
+
 Error GDExtensionLibraryLoader::open_library(const String &p_path) {
 	Error err = parse_gdextension_file(p_path);
 	if (err != OK) {
 		return err;
+	}
+
+	// Linked into the binary: no library to open.
+	static_entry = find_static_entry(entry_symbol);
+	if (static_entry) {
+		library = (void *)static_entry;
+		return OK;
 	}
 
 	String abs_path = ProjectSettings::get_singleton()->globalize_path(library_path);
@@ -221,9 +237,9 @@ Error GDExtensionLibraryLoader::initialize(GDExtensionInterfaceGetProcAddress p_
 		p_extension->class_icon_paths[icon.key] = icon.value;
 	}
 
-	void *entry_funcptr = nullptr;
+	void *entry_funcptr = (void *)static_entry;
 
-	Error err = OS::get_singleton()->get_dynamic_library_symbol_handle(library, entry_symbol, entry_funcptr, false);
+	Error err = static_entry ? OK : OS::get_singleton()->get_dynamic_library_symbol_handle(library, entry_symbol, entry_funcptr, false);
 
 	if (err != OK) {
 		ERR_PRINT(vformat("GDExtension entry point '%s' not found in library %s.", entry_symbol, library_path));
@@ -243,6 +259,11 @@ Error GDExtensionLibraryLoader::initialize(GDExtensionInterfaceGetProcAddress p_
 }
 
 void GDExtensionLibraryLoader::close_library() {
+	if (static_entry) {
+		static_entry = nullptr;
+		library = nullptr;
+		return;
+	}
 	OS::get_singleton()->close_dynamic_library(library);
 	library = nullptr;
 }
@@ -363,6 +384,10 @@ Error GDExtensionLibraryLoader::parse_gdextension_file(const String &p_path) {
 	}
 
 	library_path = find_extension_library(p_path, config, [](const String &p_feature) { return OS::get_singleton()->has_feature(p_feature); });
+
+	if (library_path.is_empty() && find_static_entry(entry_symbol)) {
+		return OK; // Linked into the binary, no library entry needed.
+	}
 
 	if (library_path.is_empty()) {
 		const String os_arch = OS::get_singleton()->get_name().to_lower() + "." + Engine::get_singleton()->get_architecture_name();

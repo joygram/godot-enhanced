@@ -3,6 +3,9 @@ from misc.utility.scons_hints import *
 
 Import("env")
 
+import glob
+import os
+
 import make_interface_dumper
 import make_interface_header
 import make_wrappers
@@ -19,4 +22,44 @@ env.CommandNoCache(
     env.Run(make_interface_header.run),
 )
 
-env.add_source_files(env.core_sources, "*.cpp")
+
+# GDExtensions linked statically (static_gdextensions="path/lib.a:entry_symbol,..."): their entry
+# functions go into a table the library loader checks before opening a library. Lets builds
+# without dynamic linking (web templates without dlink, e.g. C#) use GDExtensions.
+static_entries = []
+for entry in env["static_gdextensions"].split(","):
+    entry = entry.strip()
+    if not entry:
+        continue
+    if ":" not in entry:
+        raise RuntimeError("static_gdextensions entries must be 'path/to/lib.a:entry_symbol', got '" + entry + "'.")
+    lib, symbol = entry.rsplit(":", 1)
+    lib = os.path.abspath(os.path.expanduser(lib))
+    if not os.path.isfile(lib):
+        raise RuntimeError("static_gdextensions library not found: '" + lib + "'.")
+    env.Append(LIBS=[env.File(lib)])
+    static_entries.append(symbol)
+
+
+def make_static_gdextensions(target, source, env):
+    with open(str(target[0]), "w", encoding="utf-8", newline="\n") as f:
+        f.write('#include "core/extension/gdextension_library_loader.h"\n\n')
+        for symbol in static_entries:
+            f.write(
+                f'extern "C" GDExtensionBool {symbol}(GDExtensionInterfaceGetProcAddress, GDExtensionClassLibraryPtr, GDExtensionInitialization *);\n'
+            )
+        f.write("\nconst GDExtensionStaticEntry gdextension_static_entries[] = {\n")
+        for symbol in static_entries:
+            f.write(f'\t{{ "{symbol}", {symbol} }},\n')
+        f.write("\t{ nullptr, nullptr },\n};\n")
+
+
+env.CommandNoCache(
+    "gdextension_static.gen.cpp",
+    env.Value(",".join(static_entries)),
+    env.Run(make_static_gdextensions),
+)
+
+sources = [f for f in glob.glob(os.path.join(Dir(".").srcnode().abspath, "*.cpp")) if not f.endswith(".gen.cpp")]
+env.add_source_files(env.core_sources, [os.path.basename(f) for f in sources])
+env.add_source_files(env.core_sources, "gdextension_static.gen.cpp")
