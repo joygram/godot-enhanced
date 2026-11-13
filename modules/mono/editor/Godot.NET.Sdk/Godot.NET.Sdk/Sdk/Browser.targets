@@ -8,8 +8,10 @@
   </PropertyGroup>
 
   <!-- Configuration for the Mono WASM runtime. Must match the features enabled on GetRuntimePack.csproj. -->
+  <!-- GodotWebThreads: from the Web export preset's "Thread Support" (GodotTools passes it). Default = threads. -->
   <PropertyGroup>
-    <WasmEnableThreads>true</WasmEnableThreads>
+    <GodotWebThreads Condition="'$(GodotWebThreads)' == ''">true</GodotWebThreads>
+    <WasmEnableThreads>$(GodotWebThreads)</WasmEnableThreads>
     <WasmEnableExceptionHandling>true</WasmEnableExceptionHandling>
     <WasmEnableSIMD>true</WasmEnableSIMD>
   </PropertyGroup>

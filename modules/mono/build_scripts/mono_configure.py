@@ -45,6 +45,8 @@ def configure(env, env_mono):
                 "-r", "browser-wasm",
                 "--self-contained",
                 "-c", "Release",
+                # Threaded or single-threaded runtime pack, matching the template (threads=yes/no).
+                "-p:GodotWebThreads=" + ("true" if env["threads"] else "false"),
             ]
         )
         if exit_code != 0:
