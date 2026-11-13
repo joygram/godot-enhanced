@@ -66,3 +66,24 @@ jobs:
         with:
           name: web-${{ inputs.target }}
           path: bin/godot.web.${{ inputs.target }}.wasm32.mono.zip
+
+      # When the link/optimize step fails, find out why: validate the linked module with an independent
+      # parser and try which wasm-opt feature sets can read it.
+      - name: Diagnose failed wasm
+        if: failure()
+        run: |
+          f=bin/godot.web.${{ inputs.target }}.wasm32.mono.wasm
+          ls -la bin/*.wasm || exit 0
+          WOPT="$EMSDK/upstream/bin/wasm-opt"
+          "$WOPT" --version
+          base="--mvp-features --enable-threads --enable-bulk-memory --enable-bulk-memory-opt --enable-call-indirect-overlong --enable-exception-handling --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext --enable-simd"
+          for extra in "" "--enable-gc" "--enable-exnref" "--enable-multimemory" "--enable-relaxed-simd" "--enable-extended-const" "--enable-memory64" "--all-features"; do
+            if "$WOPT" $base $extra "$f" -o /dev/null >/dev/null 2>&1; then r=PARSES; else r=fails; fi
+            echo "wasm-opt [$extra] -> $r"
+          done
+          gh release download --repo bytecodealliance/wasm-tools --pattern '*x86_64-linux.tar.gz' --dir /tmp/wt || true
+          tar -xzf /tmp/wt/*.tar.gz -C /tmp/wt 2>/dev/null || true
+          WT=$(find /tmp/wt -name wasm-tools -type f | head -1)
+          if [ -n "$WT" ]; then "$WT" --version; "$WT" validate --features all "$f" 2>&1 | head -12 | cut -c1-400; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
