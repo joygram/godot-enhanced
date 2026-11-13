@@ -3,7 +3,9 @@
 pkill -f 'playwright install' 2>/dev/null && echo "playwright install 종료" || true
 pkill -f 'oopDownloadBrowserMain' 2>/dev/null || true
 for p in $(pgrep -f 'provision-web.sh' || true); do [ "$p" = "$$" ] || kill "$p" 2>/dev/null || true; done
-for c in "$HOME/Library/Caches/ms-playwright" "$HOME/.cache/ms-playwright"; do
+# macOS 는 시스템 Safari·Chrome 사용 → 받다 만 Playwright 브라우저 캐시 통째로 삭제
+[ "$(uname -s)" = "Darwin" ] && rm -rf "$HOME/Library/Caches/ms-playwright" && echo "삭제: ~/Library/Caches/ms-playwright"
+for c in "$HOME/.cache/ms-playwright"; do
 	[ -d "$c" ] || continue
 	rm -rf "$c/__dirlock"
 	# 실행 파일 없는(반쯤 받은) 브라우저 폴더 삭제
