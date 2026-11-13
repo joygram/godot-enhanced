@@ -37,6 +37,14 @@ def configure(env, env_mono):
             # It's fine if this directory doesn't exist.
             pass
 
+        # GetRuntimePack imports SdkPackageVersions.props, normally written by build_assemblies.py.
+        # A fresh clone that builds only a web template doesn't have it yet.
+        if not os.path.isfile(os.path.join(module_dir, "SdkPackageVersions.props")):
+            import sys
+            sys.path.insert(0, this_script_dir)
+            from build_assemblies import generate_sdk_package_versions
+            generate_sdk_package_versions()
+
         import subprocess
         exit_code = subprocess.call(
             [
