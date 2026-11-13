@@ -6,7 +6,7 @@
 // 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"}, 없으면 BUILD_AGENT_TOKEN. 포트: BUILD_AGENT_PORT (기본 8790)
 // 산출물: bin/remote/<host>/
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,13 @@ const base = `http://${host}:${process.env.BUILD_AGENT_PORT || 8790}`;
 const auth = { Authorization: `Bearer ${token}` };
 const git = (...args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+// 이 PC 로그 파일 경로
+function localLog(job) {
+	const dir = join(root, "bin", "remote", host);
+	mkdirSync(dir, { recursive: true });
+	return join(dir, `job-${job}.log`);
+}
 
 async function download(result) {
 	if (result.code !== 0) {
@@ -50,6 +57,23 @@ if (rest[0] === "--status" || rest[0] === "--cancel") {
 	const r = await fetch(`${base}/${rest[0].slice(2)}`, { method: rest[0] === "--cancel" ? "POST" : "GET", headers: auth });
 	console.log(`[remote-build] ${host}: ${await r.text()}`);
 	process.exit(0);
+}
+
+// 진행 로그 따라 보기: 원격 로그를 bin/remote/<host>/job-<번호>.log 로 받으며 화면에도 출력, 끝나면 결과 수신
+if (rest[0] === "--follow") {
+	const job = rest[1] || (await (await fetch(`${base}/status`, { headers: auth })).text()).split(" ")[1];
+	if (!job) { console.error(`[remote-build] ${host}: 진행 중 작업 없음`); process.exit(1); }
+	const file = localLog(job);
+	console.log(`[remote-build] ${host} job ${job} → ${file}`);
+	let shown = 0;
+	for (;;) {
+		const text = await (await fetch(`${base}/log/${job}`, { headers: auth })).text();
+		if (text.length > shown) { process.stdout.write(text.slice(shown)); shown = text.length; writeFileSync(file, text); }
+		const r = await fetch(`${base}/result/${job}`, { headers: auth });
+		if (r.status === 200) { await download(await r.json()); process.exit(0); }
+		if (r.status !== 202) { console.error(`[remote-build] ✘ job ${job} 없음 (${r.status})`); process.exit(1); }
+		await sleep(5000);
+	}
 }
 
 // 끊긴 빌드 이어 받기
@@ -88,18 +112,24 @@ if (!res.ok) { console.error(`[remote-build] ✘ ${res.status} ${await res.text(
 // 로그 스트림 → 끝줄 @@FILES. 끊기면 --resume 안내
 let tail = "";
 let job = "";
+let logFile = "";
 const decoder = new TextDecoder();
 try {
 	for await (const chunk of res.body) {
-		const text = decoder.decode(chunk, { stream: true });
+		const text = decoder.decode(chunk, { stream: true }).replace(/​\n/g, "");
 		tail = (tail + text).slice(-4000);
-		job ||= tail.match(/\[agent\] job (\d+)/)?.[1] ?? "";
+		if (!job && (job = tail.match(/\[agent\] job (\d+)/)?.[1] ?? "")) {
+			logFile = localLog(job);
+			console.log(`[remote-build] 로그 파일: ${logFile}`);
+			writeFileSync(logFile, "");
+		}
+		if (logFile) appendFileSync(logFile, text);
 		process.stdout.write(text.replace(/\n@@FILES .*\n?$/s, ""));
 	}
 } catch { /* 연결 끊김 */ }
 const done = tail.match(/@@FILES (\{.*\})/s);
 if (!done) {
-	console.error(`\n[remote-build] 연결 끊김 — 빌드는 계속됨. 결과 받기: node misc/scripts/remote_build.mjs ${host} --resume ${job}`);
+	console.error(`\n[remote-build] 연결 끊김 — 빌드는 계속될 수 있음. 이어 보기: node misc/scripts/remote_build.mjs ${host} --follow ${job}`);
 	process.exit(3);
 }
 await download(JSON.parse(done[1]));

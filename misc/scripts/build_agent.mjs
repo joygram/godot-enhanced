@@ -71,6 +71,9 @@ createServer(async (req, res) => {
 	// 로그 = 파일 + (연결이 살아 있으면) 응답
 	const file = createWriteStream(join(dir, "log.txt"));
 	const log = { write: (d) => { file.write(d); if (!res.destroyed) res.write(d); } };
+	// 조용한 단계(다운로드 등)에도 연결 유지: 30초마다 빈 줄 신호
+	const beat = setInterval(() => { if (!res.destroyed) res.write("​\n"); }, 30000);
+	res.on("close", () => clearInterval(beat));
 	let result;
 	try {
 		const bundle = join(dir, "src.bundle");
@@ -116,6 +119,7 @@ createServer(async (req, res) => {
 	} finally {
 		busy = false;
 		current = null;
+		clearInterval(beat);
 		writeFileSync(join(dir, "result.json"), JSON.stringify(result));
 		file.end();
 		if (!res.destroyed) res.end(`\n@@FILES ${JSON.stringify(result)}\n`);
