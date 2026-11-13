@@ -7,7 +7,7 @@
 # 선택 환경 변수:
 #   BUILD_AGENT_TOKEN  공유 토큰 (없으면 기존 값 → 없으면 생성)
 #   REPO_DIR           소스 위치 (기본 ~/workspace/godot-enhanced)
-#   WITH_EMSDK=1       웹 템플릿용 Emscripten (EMSDK_VERSION 기본 4.0.11)
+#   WITH_EMSDK=1       웹 템플릿용 Emscripten (EMSDK_VERSION 기본 6.0.2, GDScript·C# 공통)
 #   WITH_DOTNET=1      C# 빌드용 .NET 11 SDK + wasm-tools
 #   BUILD_AGENT_PORT   기본 8790
 #   SKIP_SERVICE=1     서비스 등록 건너뜀 (에이전트가 스스로 재설치할 때)
@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_URL="https://github.com/joygram/godot-enhanced.git"
 REPO_DIR="${REPO_DIR:-$HOME/workspace/godot-enhanced}"
 PORT="${BUILD_AGENT_PORT:-8790}"
-EMSDK_VERSION="${EMSDK_VERSION:-4.0.11}"
+EMSDK_VERSION="${EMSDK_VERSION:-6.0.2}"
 CONF_DIR="$HOME/.config/godot-enhanced"
 OS="$(uname -s)"
 MISE="$HOME/.local/bin/mise"

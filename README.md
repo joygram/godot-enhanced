@@ -84,7 +84,7 @@ Apply all three (as above), or only the ones you need — each patch also applie
 - GitHub Actions ([enhanced_web_template.yml](.github/workflows/enhanced_web_template.yml)) builds the Web template from this branch and publishes it on [Releases](https://github.com/joygram/godot-enhanced/releases).
 - Assets: `godot.web.template_release.wasm32.nothreads.dlink.zip` (GDExtension support), `godot.web.template_release.wasm32.nothreads.zip`.
 - Use: Web export preset → Custom Template → Release → the zip.
-- Emscripten 4.0.11. With dlink, your GDExtension web builds must use the same version.
+- Emscripten 6.0.2 (GDScript and C# alike). With dlink, your GDExtension web builds must use the same version.
 - These are the GDScript templates (no threads). C# web projects need the separate threaded `.mono` templates below.
 
 ## C# (.NET) web export
@@ -201,7 +201,7 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 - `godot.web.template_release.wasm32.nothreads.dlink.zip`: GDExtension을 쓰는 프로젝트용
 - `godot.web.template_release.wasm32.nothreads.zip`: 일반 프로젝트용
 - 웹 내보내기 프리셋의 Custom Template → Release에 zip 파일을 지정하면 됩니다.
-- Emscripten 4.0.11로 빌드했습니다. dlink 템플릿을 쓴다면 GDExtension 웹 빌드도 같은 버전이어야 합니다.
+- Emscripten 6.0.2로 빌드합니다(GDScript·C# 공통). dlink 템플릿을 쓴다면 GDExtension 웹 빌드도 같은 버전이어야 합니다.
 - 위 템플릿은 GDScript용(스레드 없음)입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿(스레드 사용)이 필요합니다.
 
 ### C#(.NET) 웹 내보내기

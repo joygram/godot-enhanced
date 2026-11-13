@@ -8,7 +8,7 @@ on:
     inputs:
       emscripten:
         description: "Emscripten version (must match GDExtension web builds for dlink)"
-        default: "4.0.11"
+        default: "6.0.2"
 
 permissions:
   contents: write
@@ -37,7 +37,7 @@ jobs:
       - uses: mymindstorm/setup-emsdk@v14
         if: steps.existing.outputs.found != 'true'
         with:
-          version: ${{ inputs.emscripten || '4.0.11' }}
+          version: ${{ inputs.emscripten || '6.0.2' }}
 
       - name: Build web templates
         if: steps.existing.outputs.found != 'true'
