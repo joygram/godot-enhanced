@@ -108,6 +108,6 @@ createServer(async (req, res) => {
 		file.end();
 		if (!res.destroyed) res.end(`\n@@FILES ${JSON.stringify(result)}\n`);
 		// 작업 중 체크아웃으로 에이전트 코드가 바뀌었으면 종료 → 서비스(launchd/systemd)가 새 코드로 재시작
-		if (readFileSync(self, "utf8") !== selfSource) { console.log("[agent] 코드 갱신 → 재시작"); setTimeout(() => process.exit(0), 1000); }
+		if (readFileSync(self, "utf8") !== selfSource || existsSync(join(dir, ".restart"))) { console.log("[agent] 코드·도구 갱신 → 재시작"); setTimeout(() => process.exit(0), 1000); }
 	}
 }).listen(port, host, () => console.log(`[agent] ${host}:${port} 대기 (소스 ${root})`));

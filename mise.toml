@@ -1,0 +1,9 @@
+# 빌드 머신 도구 (사용자 영역, sudo 불필요): mise install
+[tools]
+node = "22"
+python = "3.12"
+uv = "latest"
+"pipx:scons" = "4.11.1"
+
+[settings]
+pipx.uvx = true
