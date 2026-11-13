@@ -145,8 +145,10 @@
 | 단일 스레드 내보내기가 멀티스레드 팩 선택 | `Browser.props` 에서 `WasmEnableThreads` |
 
 - 서명 표 재생성: `dotnet run misc/scripts/web_signatures.cs <GodotSharp.dll> <m2n.h> --emit <출력>`
-- 새 옵션 `static_gdextensions="lib.a:entry,..."`: GDExtension 정적 링크
-- 정적 .a 생성: `agent_tests/static-gdext-sqlite.sh`
+- 새 옵션 `static_gdextensions=sqlite,...`: GDExtension 정적 링크 (웹 전용, 경로 `lib.a:entry` 도 가능)
+- 목록: `misc/static_gdextensions.json` (repo·ref·진입 함수)
+- 사전 빌드: `remote_build.mjs <host> --test static-gdext` → 4변형 .a → 릴리스 `static-gdext-emsdk<버전>`
+- 템플릿 빌드 시 .a 없으면 릴리스에서 자동 받음 (`STATIC_GDEXT_DIR`, 기본 `~/static-gdext`)
 - 새 옵션 `mono_wasm_native_packages="Id/Version,..."`: NuGet 네이티브 라이브러리 링크
 
 ## 남은 것
