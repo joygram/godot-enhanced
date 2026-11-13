@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, copyFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -72,7 +73,9 @@ createServer(async (req, res) => {
 		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args || "(없음)"} test=${tests.join(",") || "-"} release=${release || "-"}\n`);
 		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
 		const fetchBundle = statSync(bundle).size > 0 ? `git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && ` : "";
-		const build = args ? ` && ${pre}scons ${args} -j${jobs}` : "";
+		// 웹 빌드: ~/emsdk 있으면 자동 활성화
+		const emsdk = /platform=web/.test(args) && existsSync(join(homedir(), "emsdk", "emsdk_env.sh")) ? `source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && ` : "";
+		const build = args ? ` && ${pre}${emsdk}scons ${args} -j${jobs}` : "";
 		let code = await sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"${build}`, log);
 		const files = code === 0 && args
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
