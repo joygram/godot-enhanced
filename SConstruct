@@ -280,7 +280,7 @@ opts.Add("build_profile", "Path to a file containing a feature build profile", "
 opts.Add("custom_modules", "A list of comma-separated directory paths containing custom modules to build.", "")
 opts.Add(
     "static_gdextensions",
-    "GDExtensions linked into the binary, as comma-separated 'path/to/lib.a:entry_symbol' (used instead of loading their libraries)",
+    "GDExtensions linked into the binary (web): comma-separated names from misc/static_gdextensions.json, or 'path/to/lib.a:entry_symbol'",
     "",
 )
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
