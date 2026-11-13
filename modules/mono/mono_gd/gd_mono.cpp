@@ -681,6 +681,11 @@ godot_plugins_initialize_fn initialize_monovm_and_godot_plugins(bool &r_runtime_
 	const char *appctx_keys[] = { "APP_CONTEXT_BASE_DIRECTORY", "RUNTIME_IDENTIFIER", "System.Globalization.Invariant" };
 	const char *appctx_values[] = { "/", "browser-wasm", "true" };
 	mono_trace_set_log_handler(gd_mono_wasm_log, nullptr);
+	// SGen on the web: a small nursery keeps minor collections short (no frame hitches) and the wasm heap,
+	// which never shrinks, small. Games can override it with MONO_GC_PARAMS.
+	if (!getenv("MONO_GC_PARAMS")) {
+		setenv("MONO_GC_PARAMS", "nursery-size=1m", 1);
+	}
 	mono_wasm_load_runtime(GD_MONO_WASM_DEBUG_LEVEL, 3, appctx_keys, appctx_values);
 
 	mono_trace_set_log_handler(gd_mono_wasm_log, nullptr);
