@@ -24,7 +24,9 @@ for f in "$JOB_DIR"/*; do
 done
 ls "$out"/* >/dev/null 2>&1 || { echo "[release] 올릴 산출물 없음"; exit 1; }
 
-gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$sha" \
-	--title "$kind $version (godot-enhanced)" --notes "godot-enhanced $version — $kind."
-gh release upload "$tag" "$out"/* --clobber
+# origin 저장소로 고정 (gh 가 포크를 상위 저장소로 해석하는 것 방지)
+repo="$(git remote get-url origin | sed -E 's#(\.git)?$##; s#.*github\.com[:/]##')"
+gh release view "$tag" -R "$repo" >/dev/null 2>&1 || gh release create "$tag" -R "$repo" --target "$sha" \
+	--title "$kind $version (godot-enhanced)" --notes "godot-enhanced $version — $kind." || true
+gh release upload "$tag" -R "$repo" "$out"/* --clobber
 echo "[release] ✔ $tag ← $(ls "$out" | tr '\n' ' ') ($host, ${sha:0:10})"
