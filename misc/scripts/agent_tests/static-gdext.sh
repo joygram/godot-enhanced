@@ -47,9 +47,10 @@ done
 
 if [ -z "${NO_RELEASE:-}" ] && command -v gh >/dev/null; then
 	tag="static-gdext-emsdk$emver"
-	gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "Static GDExtensions (web, emsdk $emver)" \
+	repo="$(git remote get-url origin | sed -E 's#(\.git)?$##; s#.*github\.com[:/]##')"
+	gh release view "$tag" -R "$repo" >/dev/null 2>&1 || gh release create "$tag" -R "$repo" --title "Static GDExtensions (web, emsdk $emver)" \
 		--notes "웹 템플릿 정적 링크용 GDExtension. 빌드: scons platform=web static_gdextensions=<이름>" >/dev/null
-	gh release upload "$tag" "${built[@]}" --clobber
+	gh release upload "$tag" -R "$repo" "${built[@]}" --clobber
 	echo "릴리스: $tag (${#built[@]}개)"
 fi
 echo "✔ static-gdext ${#built[@]}개"

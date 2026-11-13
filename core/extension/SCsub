@@ -47,7 +47,10 @@ def resolve_static_gdextension(name):
         tag = "static-gdext-emsdk" + version
         print(f"static_gdextensions: downloading {filename} from release {tag}")
         os.makedirs(folder, exist_ok=True)
-        subprocess.run(["gh", "release", "download", tag, "-p", filename, "-D", folder, "--clobber"], cwd=Dir("#").abspath)
+        # The repository of origin (gh may otherwise resolve a fork to its upstream).
+        origin = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, cwd=Dir("#").abspath).stdout.strip()
+        repo = origin.removesuffix(".git").split("github.com")[-1].lstrip(":/")
+        subprocess.run(["gh", "release", "download", tag, "-R", repo, "-p", filename, "-D", folder, "--clobber"])
         if not os.path.isfile(lib):
             raise RuntimeError(
                 f"static_gdextensions: {filename} not found locally or in release {tag}. Build it with misc/scripts/agent_tests/static-gdext.sh."
