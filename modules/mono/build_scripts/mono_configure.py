@@ -55,7 +55,7 @@ def configure(env, env_mono):
             with open(native_packages_props, "w", encoding="utf-8", newline="\n") as f:
                 f.write("<Project>\n  <ItemGroup>\n")
                 for package in native_packages:
-                    package_id, _, version = package.partition("@")
+                    package_id, _, version = package.replace("/", "@").partition("@")
                     f.write(f'    <PackageReference Include="{package_id}" Version="{version}" />\n')
                 f.write("  </ItemGroup>\n</Project>\n")
         elif os.path.isfile(native_packages_props):

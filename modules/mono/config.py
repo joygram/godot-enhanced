@@ -18,7 +18,7 @@ def get_opts(platform):
         (
             "mono_wasm_native_packages",
             "Web only: comma-separated NuGet packages with native browser-wasm libraries (e.g. "
-            + "SQLitePCLRaw.bundle_e_sqlite3@2.1.11). Their native code and P/Invoke entries are linked into the template.",
+            + "SQLitePCLRaw.bundle_e_sqlite3@2.1.11, or Id/Version). Their native code and P/Invoke entries are linked into the template.",
             "",
         ),
     ]
