@@ -12,6 +12,7 @@ from emscripten_helpers import (
     create_template_zip,
     get_template_zip_path,
     run_closure_compiler,
+    erase_dotnet_setup,
 )
 from SCons.Util import WhereIs
 
@@ -91,6 +92,7 @@ def get_flags():
         # run-time performance.
         # Note that this overrides the "auto" behavior for target/dev_build.
         "optimize": "size",
+        "supported": ["mono"],
     }
 
 
@@ -235,6 +237,9 @@ def configure(env: "SConsEnvironment"):
 
     # Add method for creating the final zip file
     env.AddMethod(create_template_zip, "CreateTemplateZip")
+
+    # Add method for erasing the "DOTNET.setup();" string
+    env.AddMethod(erase_dotnet_setup, "EraseDotnetSetup")
 
     # Use TempFileMunge since some AR invocations are too long for cmd.exe.
     # Use POSIX-style paths, required with TempFileMunge.
