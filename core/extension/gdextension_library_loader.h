@@ -36,6 +36,14 @@
 
 #include <functional>
 
+// Entry functions of GDExtensions linked into the binary (static_gdextensions build option).
+// Generated table in gdextension_static.gen.cpp, ends with { nullptr, nullptr }.
+struct GDExtensionStaticEntry {
+	const char *symbol;
+	GDExtensionInitializationFunction function;
+};
+extern const GDExtensionStaticEntry gdextension_static_entries[];
+
 class GDExtensionLibraryLoader : public GDExtensionLoader {
 	GDSOFTCLASS(GDExtensionLibraryLoader, GDExtensionLoader);
 
@@ -48,6 +56,9 @@ private:
 	void *library = nullptr; // pointer if valid.
 	String library_path;
 	String entry_symbol;
+	GDExtensionInitializationFunction static_entry = nullptr; // Set when linked into the binary.
+
+	static GDExtensionInitializationFunction find_static_entry(const String &p_symbol);
 
 #ifdef TOOLS_ENABLED
 	bool is_reloadable = false;
