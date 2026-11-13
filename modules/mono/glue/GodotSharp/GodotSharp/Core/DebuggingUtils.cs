@@ -116,6 +116,11 @@ namespace Godot
         [UnmanagedCallersOnly]
         internal static unsafe void GetCurrentStackInfo(void* destVector)
         {
+            // Mono on WebAssembly has no usable managed stack walk: StackTrace(fNeedFileInfo) ends the
+            // page while an error is being printed. Report no C# frames there.
+            if (OperatingSystem.IsBrowser())
+                return;
+
             try
             {
                 var vector = (godot_stack_info_vector*)destVector;

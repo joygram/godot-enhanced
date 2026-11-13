@@ -111,7 +111,7 @@ namespace Godot.Bridge
         internal static unsafe void GetScriptNativeName(IntPtr scriptPtr, godot_string_name* outRes) { }
 
         [UnmanagedCallersOnly]
-        internal static unsafe void GetGlobalClassName(godot_string* scriptPath, godot_string* outBaseType, godot_string* outIconPath, godot_string* outClassName) { }
+        internal static unsafe void GetGlobalClassName(godot_string* scriptPath, godot_string* outBaseType, godot_string* outIconPath, godot_bool* outIsAbstract, godot_bool* outIsTool, godot_string* outClassName) { }
 
         [UnmanagedCallersOnly]
         internal static void SetGodotObjectPtr(IntPtr gcHandlePtr, IntPtr newPtr) { }

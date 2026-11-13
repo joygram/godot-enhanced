@@ -55,11 +55,8 @@ def configure(env, env_mono):
             shutil.copytree(mono_runtime_path, mono_runtime_copy_path)
             mono_runtime_path = mono_runtime_copy_path
 
-        # The default Mono runtime uses WASM exceptions. The .NET 11 runtime pack is compiled with the new
-        # (exnref) exception handling (-s WASM_LEGACY_EXCEPTIONS=0); all objects in the template must use the
-        # same kind, otherwise wasm-opt cannot parse the linked module.
-        env.Append(CCFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
-        env.Append(LINKFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
+        # Exception flags (exnref, matching the .NET 11 runtime pack) are set in platform/web/detect.py so
+        # that every environment gets them; appending here would miss env_modules/env_mono (already cloned).
 
         env_mono.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "mono-2.0"))
 

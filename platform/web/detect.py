@@ -96,6 +96,11 @@ def get_flags():
     }
 
 
+def _tempfile_arg_posix(arg):
+    arg = str(arg).replace("\\", "/")
+    return '"' + arg + '"' if " " in arg else arg
+
+
 def library_emitter(target, source, env):
     # Make every source file dependent on the compiler version.
     # This makes sure that when emscripten is updated, that the cached files
@@ -245,6 +250,13 @@ def configure(env: "SConsEnvironment"):
     # Use POSIX-style paths, required with TempFileMunge.
     env["ARCOM_POSIX"] = env["ARCOM"].replace("$TARGET", "$TARGET.posix").replace("$SOURCES", "$SOURCES.posix")
     env["ARCOM"] = "${TEMPFILE('$ARCOM_POSIX','$ARCOMSTR')}"
+    # Same for the final link: with the .NET runtime pack libraries it exceeds cmd.exe's limit on Windows.
+    env["LINKCOM_POSIX"] = (
+        env["LINKCOM"].replace("$TARGET", "$TARGET.posix").replace("$SOURCES", "$SOURCES.posix")
+    )
+    env["LINKCOM"] = "${TEMPFILE('$LINKCOM_POSIX','$LINKCOMSTR')}"
+    # Emscripten reads response files with POSIX quoting: backslashes in flag paths (--pre-js etc.) would be eaten.
+    env["TEMPFILEARGESCFUNC"] = _tempfile_arg_posix
 
     # All intermediate files are just object files.
     env["OBJPREFIX"] = ""
@@ -331,10 +343,20 @@ def configure(env: "SConsEnvironment"):
     env.Append(CCFLAGS=["-sSUPPORT_LONGJMP='wasm'"])
     env.Append(LINKFLAGS=["-sSUPPORT_LONGJMP='wasm'"])
 
+    if env["module_mono_enabled"]:
+        # The .NET 11 runtime pack uses new (exnref) wasm exceptions. Every object (incl. wasm SjLj code) must
+        # use the same encoding, so set it here before module environments are cloned from env.
+        env.Append(CCFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
+        env.Append(LINKFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
+
     # Allow increasing memory buffer size during runtime. This is efficient
     # when using WebAssembly (in comparison to asm.js) and works well for
     # us since we don't know requirements at compile-time.
     env.Append(LINKFLAGS=["-sALLOW_MEMORY_GROWTH=1"])
+
+    # Emscripten 6 auto-detects growable (resizable) ArrayBuffers and uses them for the heap views. WebGL 2
+    # calls reject views of a resizable buffer ("The provided ArrayBuffer value must not be resizable").
+    env.Append(LINKFLAGS=["-sGROWABLE_ARRAYBUFFERS=0"])
 
     # Do not call main immediately when the support code is ready.
     env.Append(LINKFLAGS=["-sINVOKE_RUN=0"])

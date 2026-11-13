@@ -102,7 +102,8 @@ mono_assembly_load_from_full_fn mono_assembly_load_from_full = nullptr;
 
 #ifdef WEB_ENABLED
 extern "C" {
-void mono_wasm_load_runtime(int debug_level);
+// .NET 11 runtime pack (driver.c): AppContext properties are passed to monovm_initialize.
+void mono_wasm_load_runtime(int debug_level, int property_count, const char **property_keys, const char **property_values);
 }
 
 // Mono's debug level for the web runtime. Any value other than 0 turns on debugger support and
@@ -116,16 +117,16 @@ void mono_wasm_load_runtime(int debug_level);
 #endif
 #endif
 
-#ifdef GD_MONO_WASM_AOT
-// Templates built with AOT-compiled assemblies (mono_wasm_aot_dir) log what Mono's AOT loader
-// does with each assembly, so a mismatch that silently falls back to the interpreter shows up.
+// Mono's own log output (asserts, g_error, warnings). The runtime's default handler is the JS-side one that
+// Godot's web build erases (DOTNET.setup()), so without this a fatal runtime error ends in a bare abort().
+// Templates built with AOT-compiled assemblies (mono_wasm_aot_dir) also log what the AOT loader does with
+// each assembly, so a mismatch that silently falls back to the interpreter shows up.
 void gd_mono_wasm_log(const char *p_log_domain, const char *p_log_level, const char *p_message, mono_bool p_fatal, void *p_user_data) {
 	print_line(vformat(".NET: Mono %s: %s", p_log_level, String::utf8(p_message).strip_edges()));
 	if (p_fatal) {
 		CRASH_NOW();
 	}
 }
-#endif
 #endif
 #endif // !TOOLS_ENABLED
 
@@ -661,12 +662,20 @@ MonoMethod *_initialize_method;
 godot_plugins_initialize_fn initialize_monovm_and_godot_plugins(bool &r_runtime_initialized) {
 	mono_install_assembly_preload_hook(&load_assembly_from_pck, nullptr);
 
-	mono_wasm_load_runtime(GD_MONO_WASM_DEBUG_LEVEL);
-
-#ifdef GD_MONO_WASM_AOT
+	// Same AppContext as the runtime's own initialize_runtime() (browserVirtualAppBase "/").
+	// Godot never loads ICU data, so the runtime must start in globalization-invariant mode. The game's
+	// runtimeconfig.json is not read here, so the switch the SDK sets (InvariantGlobalization) has to be passed.
+	const char *appctx_keys[] = { "APP_CONTEXT_BASE_DIRECTORY", "RUNTIME_IDENTIFIER", "System.Globalization.Invariant" };
+	const char *appctx_values[] = { "/", "browser-wasm", "true" };
 	mono_trace_set_log_handler(gd_mono_wasm_log, nullptr);
+	mono_wasm_load_runtime(GD_MONO_WASM_DEBUG_LEVEL, 3, appctx_keys, appctx_values);
+
+	mono_trace_set_log_handler(gd_mono_wasm_log, nullptr);
+#ifdef GD_MONO_WASM_AOT
 	mono_trace_set_level_string("info");
 	mono_trace_set_mask_string("aot");
+#else
+	mono_trace_set_level_string("warning");
 #endif
 
 	r_runtime_initialized = true;
