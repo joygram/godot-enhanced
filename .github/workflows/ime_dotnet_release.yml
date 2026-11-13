@@ -137,7 +137,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+      # The runner also has newer SDKs (up to .NET 11 preview); without a pin `dotnet` picks the newest and
+      # installs the wasm-tools workload of that version, which breaks the net9.0 runtime pack build.
+      - name: Pin .NET SDK 9
+        run: |
+          printf '{\n  "sdk": {\n    "version": "9.0.100",\n    "rollForward": "latestFeature"\n  }\n}\n' > global.json
+          dotnet --list-sdks
+          dotnet --version
       - run: dotnet workload install wasm-tools
+      - run: dotnet workload list
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: ${{ env.EMSDK_VERSION }}

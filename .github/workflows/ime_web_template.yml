@@ -1,7 +1,7 @@
 name: 🌐 Web template (patched)
 
 # Builds the Web export template from this branch (GDScript parser release patch included)
-# and publishes it as a release asset. Matches the setup used by the rpg2d project:
+# and publishes it as a release asset. Manual only (no build on every push). Matches the setup used by the rpg2d project:
 # dlink enabled (GDExtension, e.g. godot-sqlite), no threads.
 on:
   workflow_dispatch:
@@ -9,12 +9,6 @@ on:
       emscripten:
         description: "Emscripten version (must match GDExtension web builds for dlink)"
         default: "4.0.11"
-  push:
-    branches: ["4.7.2-ime"]
-    paths:
-      - "modules/gdscript/**"
-      - "platform/web/**"
-      - ".github/workflows/ime_web_template.yml"
 
 permissions:
   contents: write
