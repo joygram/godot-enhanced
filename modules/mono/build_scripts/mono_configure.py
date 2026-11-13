@@ -45,6 +45,22 @@ def configure(env, env_mono):
             from build_assemblies import generate_sdk_package_versions
             generate_sdk_package_versions()
 
+        # NuGet packages with native browser-wasm code (mono_wasm_native_packages="Id@Version,...").
+        native_packages_props = os.path.join(get_runtime_pack_project_path, "NativePackages.props")
+        native_packages = [p.strip() for p in env.get("mono_wasm_native_packages", "").split(",") if p.strip()]
+        native_references_path = os.path.join(get_runtime_pack_project_path, "bin", rid, "native-references.txt")
+        if os.path.isfile(native_references_path):
+            os.remove(native_references_path)
+        if native_packages:
+            with open(native_packages_props, "w", encoding="utf-8", newline="\n") as f:
+                f.write("<Project>\n  <ItemGroup>\n")
+                for package in native_packages:
+                    package_id, _, version = package.partition("@")
+                    f.write(f'    <PackageReference Include="{package_id}" Version="{version}" />\n')
+                f.write("  </ItemGroup>\n</Project>\n")
+        elif os.path.isfile(native_packages_props):
+            os.remove(native_packages_props)
+
         import subprocess
         exit_code = subprocess.call(
             [
@@ -89,6 +105,16 @@ def configure(env, env_mono):
         for icu in ["libicuuc.a", "libicui18n.a", "libicudata.a"]:
             env.Append(LIBS=[env.File(os.path.join(mono_runtime_path, icu))])
         add_mono_library(env, "libz.a", mono_runtime_path)
+
+        # Native code of mono_wasm_native_packages (listed by GetRuntimePack's publish).
+        if native_packages:
+            with open(native_references_path, encoding="utf-8") as f:
+                native_references = [line.strip() for line in f if line.strip().endswith(".a")]
+            if not native_references:
+                raise RuntimeError("mono_wasm_native_packages: no native browser-wasm libraries in " + ", ".join(native_packages))
+            for lib in native_references:
+                print("Linking native package library '" + lib + "'.")
+                env.Append(LIBS=[env.File(lib)])
 
         # Mono components. Release templates use the stubs for the development-only ones
         # (debugger, hot reload, EventPipe tracing).
