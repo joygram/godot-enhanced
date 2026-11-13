@@ -40,12 +40,18 @@ let driver; // { sample(), shot(), close() }
 if (browserName === "safari") {
 	// 시스템 Safari (WebDriver). 1회 설정: Safari → 설정 → 개발자 → '원격 자동화 허용'
 	const wdPort = port + 1;
+	// 열려 있는 Safari 와 자동화 창 충돌 방지 → 먼저 종료
+	spawn("osascript", ["-e", 'quit app "Safari"']);
+	await wait(3000);
 	const sd = spawn("safaridriver", ["-p", String(wdPort)]);
 	const wd = async (method, path, body) => (await (await fetch(`http://127.0.0.1:${wdPort}${path}`, { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) })).json()).value;
 	let session;
-	for (let i = 0; i < 40 && !session; i++) {
-		try { const v = await wd("POST", "/session", { capabilities: { alwaysMatch: { browserName: "safari" } } }); if (v.sessionId) session = v.sessionId; else { console.error(`✘ safaridriver: ${v.message ?? JSON.stringify(v)}`); break; } }
-		catch { await wait(250); }
+	for (let i = 0, tries = 0; i < 60 && !session && tries < 3; i++) {
+		try {
+			const v = await wd("POST", "/session", { capabilities: { alwaysMatch: { browserName: "safari" } } });
+			if (v.sessionId) session = v.sessionId;
+			else { tries++; console.error(`safaridriver 시도 ${tries}/3: ${v.message ?? JSON.stringify(v)}`); await wait(5000); }
+		} catch { await wait(500); }
 	}
 	if (!session) { console.error("✘ Safari 세션 실패 → Safari 설정 → 개발자 → '원격 자동화 허용' 확인"); sd.kill(); server.close(); process.exit(1); }
 	await wd("POST", `/session/${session}/url`, { url: page });
