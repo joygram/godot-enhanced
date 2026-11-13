@@ -357,6 +357,21 @@ namespace GodotTools.Export
                                     return;
                                 }
 
+                                if (platform == OS.Platforms.Web)
+                                {
+                                    string webFileName = Path.GetFileName(path);
+                                    if (webFileName.EndsWith(".a") ||
+                                        (webFileName.StartsWith("icudt") && webFileName.EndsWith(".dat")) ||
+                                        webFileName == "package.json" || webFileName == "wasm-props.json")
+                                    {
+                                        // The runtime is statically linked into the export template, so `.a` archives
+                                        // are only needed when building the template. Godot starts Mono in
+                                        // globalization-invariant mode and never loads ICU data. The JSON files are
+                                        // build metadata of the runtime pack.
+                                        return;
+                                    }
+                                }
+
                                 if (embedBuildResults)
                                 {
                                     if (platform == OS.Platforms.Android)
