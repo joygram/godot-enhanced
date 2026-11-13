@@ -1,5 +1,5 @@
 diff --git a/modules/mono/build_scripts/mono_configure.py b/modules/mono/build_scripts/mono_configure.py
-index 98c50dcc22..a27d39751b 100644
+index 98c50dcc22..1bc2002f0d 100644
 --- a/modules/mono/build_scripts/mono_configure.py
 +++ b/modules/mono/build_scripts/mono_configure.py
 @@ -1,3 +1,10 @@
@@ -13,7 +13,7 @@ index 98c50dcc22..a27d39751b 100644
  def is_desktop(platform):
      return platform in ["windows", "macos", "linuxbsd"]
  
-@@ -11,12 +18,164 @@ def module_supports_tools_on(platform):
+@@ -11,12 +18,165 @@ def module_supports_tools_on(platform):
  
  
  def configure(env, env_mono):
@@ -74,7 +74,8 @@ index 98c50dcc22..a27d39751b 100644
 +        add_mono_library(env, "libSystem.Native.a", mono_runtime_path)
 +        add_mono_library(env, "libSystem.Globalization.Native.a", mono_runtime_path)
 +        add_mono_library(env, "libSystem.IO.Compression.Native.a", mono_runtime_path)
-+        add_mono_library(env, "wasm-bundled-timezones.a", mono_runtime_path)
++        # Time zone data (named wasm-bundled-timezones.a before .NET 10; the Invariant variant is for InvariantTimezone).
++        add_mono_library(env, "libSystem.Native.TimeZoneData.a", mono_runtime_path)
 +        add_mono_library(env, "libmono-wasm-simd.a", mono_runtime_path)
 +        add_mono_library(env, "libmono-icall-table.a", mono_runtime_path)
 +        add_mono_library(env, "libicuuc.a", mono_runtime_path)
