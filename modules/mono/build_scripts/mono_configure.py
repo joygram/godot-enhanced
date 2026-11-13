@@ -70,7 +70,8 @@ def configure(env, env_mono):
         add_mono_library(env, "libSystem.Native.a", mono_runtime_path)
         add_mono_library(env, "libSystem.Globalization.Native.a", mono_runtime_path)
         add_mono_library(env, "libSystem.IO.Compression.Native.a", mono_runtime_path)
-        add_mono_library(env, "wasm-bundled-timezones.a", mono_runtime_path)
+        # Time zone data (named wasm-bundled-timezones.a before .NET 10; the Invariant variant is for InvariantTimezone).
+        add_mono_library(env, "libSystem.Native.TimeZoneData.a", mono_runtime_path)
         add_mono_library(env, "libmono-wasm-simd.a", mono_runtime_path)
         add_mono_library(env, "libmono-icall-table.a", mono_runtime_path)
         add_mono_library(env, "libicuuc.a", mono_runtime_path)
