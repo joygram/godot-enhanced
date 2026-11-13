@@ -75,16 +75,20 @@ def configure(env, env_mono):
         add_mono_library(env, "libSystem.Native.TimeZoneData.a", mono_runtime_path)
         add_mono_library(env, "libmono-wasm-simd.a", mono_runtime_path)
         add_mono_library(env, "libmono-icall-table.a", mono_runtime_path)
-        add_mono_library(env, "libicuuc.a", mono_runtime_path)
-        add_mono_library(env, "libicudata.a", mono_runtime_path)
-        add_mono_library(env, "libicui18n.a", mono_runtime_path)
+        # ICU: the runtime starts with System.Globalization.Invariant=true (gd_mono.cpp), so only what
+        # System.Globalization.Native references is kept. Linked as plain libraries (after the objects),
+        # not whole-archive, so the linker drops the unused ICU code.
+        for icu in ["libicuuc.a", "libicui18n.a", "libicudata.a"]:
+            env.Append(LIBS=[env.File(os.path.join(mono_runtime_path, icu))])
         add_mono_library(env, "libz.a", mono_runtime_path)
 
-        # Mono components.
-        add_mono_component(env, "debugger", mono_runtime_path)
+        # Mono components. Release templates use the stubs for the development-only ones
+        # (debugger, hot reload, EventPipe tracing).
+        is_release = env["target"] == "template_release"
+        add_mono_component(env, "debugger", mono_runtime_path, is_stub=is_release)
         # Single-threaded runtime pack: the real component needs the browser EventPipe profiler (not linked) → stub.
-        add_mono_component(env, "diagnostics_tracing", mono_runtime_path, is_stub=not env["threads"])
-        add_mono_component(env, "hot_reload", mono_runtime_path)
+        add_mono_component(env, "diagnostics_tracing", mono_runtime_path, is_stub=is_release or not env["threads"])
+        add_mono_component(env, "hot_reload", mono_runtime_path, is_stub=is_release)
         add_mono_component(env, "marshal-ilgen", mono_runtime_path)
 
         # WASM additional sources.
