@@ -109,7 +109,7 @@ try { writeFileSync(outJson.replace(/\.json$/, ".png"), await driver.shot()); } 
 const errors = logs.filter((l) => /^EXC|SCRIPT ERROR|Aborted\(|RuntimeError|Unhandled exception|out of memory/i.test(l));
 const result = {
 	browser: browserName, wasm_heap_peak_mb: Math.max(0, ...samples.map((s) => s.wasm_mb)), js_heap_mb: samples.at(-1)?.js_mb ?? 0,
-	errors: errors.slice(0, 10), marks: logs.filter((l) => /boot ok|memstat|peak/i.test(l)).slice(-10), samples,
+	errors: errors.slice(0, 10), marks: logs.filter((l) => /boot ok|memstat|peak|\bAOT\b/i.test(l)).slice(-10), samples,
 };
 writeFileSync(outJson, JSON.stringify(result, null, 2));
 console.log(`[${browserName}] wasm 힙 최대 ${result.wasm_heap_peak_mb}MB, 오류 ${errors.length}건 ${result.marks.at(-1) ?? ""} → ${outJson}`);
