@@ -2,10 +2,11 @@
 // 실행: BUILD_AGENT_TOKEN=<토큰> node misc/scripts/build_agent.mjs
 // 환경: BUILD_AGENT_TOKEN (필수), BUILD_AGENT_PORT (기본 8790), BUILD_AGENT_HOST (기본 0.0.0.0, Tailscale IP 권장),
 //       BUILD_AGENT_PRE (빌드 전 셸, 예: "source ~/emsdk/emsdk_env.sh")
-// API: POST /build?args=<scons 인자> (본문 = git bundle) → 로그 스트림, 끝줄 "@@FILES <json>"
-//      GET /files/<job>/<파일> → 산출물, GET /status → idle|busy
+// API: POST /build?sha=<커밋>&args=<scons 인자> (본문 = 푸시 전 커밋 git bundle, 없으면 빈 본문)
+//        → 로그 스트림, 끝줄 "@@FILES <json>"
+//      GET /result/<job>, /log/<job>, /files/<job>/<파일>, /status
 import { spawn } from "node:child_process";
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,29 +38,50 @@ createServer(async (req, res) => {
 		createReadStream(file).pipe(res);
 		return;
 	}
+	// 끊긴 뒤 다시 받기: GET /result/<job> → 결과 JSON (진행 중이면 202), GET /log/<job> → 로그
+	if (req.method === "GET" && /^\/(result|log)\/\d+$/.test(url.pathname)) {
+		const [, kind, job] = url.pathname.split("/");
+		const file = join(out, job, kind === "result" ? "result.json" : "log.txt");
+		if (!existsSync(file)) { res.writeHead(kind === "result" && existsSync(join(out, job)) ? 202 : 404).end(); return; }
+		createReadStream(file).pipe(res);
+		return;
+	}
 	if (req.method !== "POST" || url.pathname !== "/build") { res.writeHead(404).end(); return; }
 	if (busy) { res.writeHead(409).end("busy"); return; }
 	busy = true;
 	const job = `${Date.now()}`;
 	const dir = join(out, job);
 	mkdirSync(dir, { recursive: true });
+	res.on("error", () => {});
 	res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+	// 로그 = 파일 + (연결이 살아 있으면) 응답
+	const file = createWriteStream(join(dir, "log.txt"));
+	const log = { write: (d) => { file.write(d); if (!res.destroyed) res.write(d); } };
+	let result;
 	try {
 		const bundle = join(dir, "src.bundle");
 		await new Promise((done) => req.pipe(createWriteStream(bundle)).on("finish", done));
+		const sha = (url.searchParams.get("sha") || "").replace(/[^0-9a-f]/g, "");
 		const args = (url.searchParams.get("args") || "").replace(/[^\w=.,+\- ]/g, "");
 		const jobs = "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)";
-		res.write(`[agent] job ${job}: scons ${args}\n`);
+		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args}\n`);
+		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
+		const fetchBundle = statSync(bundle).size > 0 ? `git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && ` : "";
 		const code = await sh(
-			`git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && git checkout -q -f agent-build && touch "${dir}/.start" && ${pre}scons ${args} -j${jobs}`,
-			res,
+			`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start" && ${pre}scons ${args} -j${jobs}`,
+			log,
 		);
 		const files = code === 0
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
 			: [];
 		for (const f of files) copyFileSync(join(root, "bin", f), join(dir, f));
-		res.end(`\n@@FILES ${JSON.stringify({ code, job, files })}\n`);
+		result = { code, job, files };
 	} catch (e) {
-		res.end(`\n@@FILES ${JSON.stringify({ code: 1, job, files: [], error: String(e) })}\n`);
-	} finally { busy = false; }
+		result = { code: 1, job, files: [], error: String(e) };
+	} finally {
+		busy = false;
+		writeFileSync(join(dir, "result.json"), JSON.stringify(result));
+		file.end();
+		if (!res.destroyed) res.end(`\n@@FILES ${JSON.stringify(result)}\n`);
+	}
 }).listen(port, host, () => console.log(`[agent] ${host}:${port} 대기 (소스 ${root})`));
