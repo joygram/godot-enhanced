@@ -19,7 +19,17 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - **IL trimming**: unused framework code removed; game + `GodotSharp` kept → 30 → 10.7 MB
 - **Web-tuned GC**: 1 MB SGen nursery → shorter minor GCs. Override: `MONO_GC_PARAMS`
 - **.NET 11** runtime pack, Emscripten 6.0.2
-- Also: Windows Hangul IME fix, GDScript parser memory release
+- Also: Windows Hangul IME fix
+
+### 🔍 GDScript web: a memory leak found in Godot's compiler
+
+- Tracked: rpg2d web boot → WASM heap kept growing, never came back down
+- Found: GDScript parsers of mutually dependent scripts hold each other → syntax trees never freed
+- Found: compiling a script pulls its whole dependency chain → every tree in memory at once
+- Fixed: parser released before dependencies compile; cached parsers cleared after the outermost reload
+- Result: trees freed right after compile, lower boot peak. Script behavior unchanged
+- Applies to every GDScript project, not only C#. Biggest win on web (heap never shrinks)
+- Numbers: official vs enhanced on rpg2d — measuring, added here when done
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
@@ -125,7 +135,17 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 - **웹용 GC**: SGen nursery 1 MB → 작은 GC가 짧아져 프레임 끊김 감소. `MONO_GC_PARAMS`로 변경 가능
 - **.NET 11** 런타임 팩, Emscripten 6.0.2
 
-0.1.1에 함께: Windows 한글 IME 수정, 웹 부팅용 GDScript 파서 메모리 해제.
+0.1.1에 함께: Windows 한글 IME 수정.
+
+### 🔍 GDScript 웹: Godot 컴파일러의 메모리 누수를 찾아 막음
+
+- 추적: rpg2d 웹 부팅 → WASM 힙이 계속 커지고 내려오지 않음
+- 발견: 서로 참조하는 스크립트의 파서가 서로를 붙잡음 → 구문 트리가 해제되지 않음
+- 발견: 스크립트 하나 컴파일 = 의존 사슬 전체 컴파일 → 구문 트리가 한꺼번에 메모리에 올라감
+- 해결: 의존 스크립트 컴파일 전에 자기 파서 해제, 가장 바깥 reload 끝나면 파서 캐시 정리
+- 결과: 컴파일 직후 구문 트리 해제, 부팅 최고치 감소. 스크립트 동작은 그대로
+- C#만이 아니라 모든 GDScript 프로젝트에 적용. 힙이 줄지 않는 웹에서 효과 최대
+- 수치: rpg2d로 공식판과 비교 측정 중, 끝나면 여기에 추가
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
 - 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.1`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.1`
