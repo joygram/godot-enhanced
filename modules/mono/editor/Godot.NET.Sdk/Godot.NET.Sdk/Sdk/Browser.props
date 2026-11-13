@@ -1,2 +1,10 @@
 <Project>
+  <!--
+    The runtime pack (single- or multi-threaded) is chosen from WasmEnableThreads while the .NET SDK targets
+    are evaluated, before Browser.targets. Set it here from GodotWebThreads (passed by GodotTools from the
+    Web export preset's "Thread Support"), so a single-threaded export gets the single-threaded pack.
+  -->
+  <PropertyGroup Condition=" '$(GodotWebThreads)' != '' ">
+    <WasmEnableThreads>$(GodotWebThreads)</WasmEnableThreads>
+  </PropertyGroup>
 </Project>
