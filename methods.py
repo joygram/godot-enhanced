@@ -133,12 +133,15 @@ def add_module_version_string(self, s):
     self.module_version_string += "." + s
 
 
+# Resolved at import (cwd = repo root). Later SConscripts change cwd, and __file__ can be relative (Python 3.9).
+_ENHANCED_VERSION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ENHANCED_VERSION")
+
+
 def get_version_info(module_version_string="", silent=False):
     build_name = "custom_build"
     # godot-enhanced release number (ENHANCED_VERSION) → build name "enhanced-0.1.1".
-    enhanced_version_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ENHANCED_VERSION")
-    if os.path.isfile(enhanced_version_path):
-        with open(enhanced_version_path, encoding="utf-8") as f:
+    if os.path.isfile(_ENHANCED_VERSION_PATH):
+        with open(_ENHANCED_VERSION_PATH, encoding="utf-8") as f:
             build_name = "enhanced-" + f.read().strip()
     if os.getenv("BUILD_NAME") is not None:
         build_name = str(os.getenv("BUILD_NAME"))
