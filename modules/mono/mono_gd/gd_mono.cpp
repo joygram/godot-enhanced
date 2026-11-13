@@ -52,6 +52,7 @@
 #include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
+#include "core/templates/local_vector.h"
 
 #ifdef UNIX_ENABLED
 #include <dlfcn.h>
@@ -600,9 +601,21 @@ MonoAssembly *load_assembly_from_pck(MonoAssemblyName *p_assembly_name, char **p
 
 	MonoImageOpenStatus status = MONO_IMAGE_OK;
 
+#ifdef WEB_ENABLED
+	// Mono keeps pointing into the image data, so the buffer stays alive for the whole run and Mono does not copy it.
+	static LocalVector<Vector<uint8_t>> pinned_assembly_data;
+	pinned_assembly_data.push_back(data);
+	data = Vector<uint8_t>();
+	Vector<uint8_t> &image_data = pinned_assembly_data[pinned_assembly_data.size() - 1];
+	constexpr bool need_copy = false;
+#else
+	Vector<uint8_t> &image_data = data;
+	constexpr bool need_copy = true;
+#endif
+
 	MonoImage *image = mono_image_open_from_data_with_name(
-			reinterpret_cast<char *>(data.ptrw()), data.size(),
-			/*need_copy*/ true,
+			reinterpret_cast<char *>(image_data.ptrw()), image_data.size(),
+			need_copy,
 			&status,
 			ref_only,
 			assembly_name.utf8().get_data());
