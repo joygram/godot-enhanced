@@ -29,7 +29,12 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Fixed: parser released before dependencies compile; cached parsers cleared after the outermost reload
 - Result: trees freed right after compile, lower boot peak. Script behavior unchanged
 - Applies to every GDScript project, not only C#. Biggest win on web (heap never shrinks)
-- Numbers: official vs enhanced on rpg2d — measuring, added here when done
+
+| rpg2d boot static memory (`autoload_first`) | Before | **After** | |
+|---|---|---|---|
+| Desktop run logs, 2026-11-13 | 145.8 – 165.5 MB (16 runs) | **67.4 – 68.0 MB** (13 runs) | **≈ −56%** |
+
+- Drop starts with the first run on the patched editor (10:07, release `88690556f4`)
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
@@ -145,7 +150,12 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 - 해결: 의존 스크립트 컴파일 전에 자기 파서 해제, 가장 바깥 reload 끝나면 파서 캐시 정리
 - 결과: 컴파일 직후 구문 트리 해제, 부팅 최고치 감소. 스크립트 동작은 그대로
 - C#만이 아니라 모든 GDScript 프로젝트에 적용. 힙이 줄지 않는 웹에서 효과 최대
-- 수치: rpg2d로 공식판과 비교 측정 중, 끝나면 여기에 추가
+
+| rpg2d 부팅 정적 메모리 (`autoload_first`) | 이전 | **이후** | |
+|---|---|---|---|
+| 데스크톱 실행 로그, 2026-11-13 | 145.8 – 165.5 MB (16회) | **67.4 – 68.0 MB** (13회) | **약 −56%** |
+
+- 패치 에디터(릴리스 `88690556f4`) 첫 실행(10:07)부터 하락
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
 - 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.1`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.1`
