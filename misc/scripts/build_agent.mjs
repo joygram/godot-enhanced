@@ -6,7 +6,7 @@
 //        → 로그 스트림, 끝줄 "@@FILES <json>"
 //      GET /result/<job>, /log/<job>, /files/<job>/<파일>, /status
 import { spawn } from "node:child_process";
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, writeFileSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, copyFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,8 @@ const port = Number(process.env.BUILD_AGENT_PORT || 8790);
 const host = process.env.BUILD_AGENT_HOST || "0.0.0.0";
 const pre = process.env.BUILD_AGENT_PRE ? `${process.env.BUILD_AGENT_PRE} && ` : "";
 const out = join(root, "bin", "agent-jobs");
+const self = fileURLToPath(import.meta.url);
+const selfSource = readFileSync(self, "utf8");
 let busy = false;
 
 const sh = (script, log) => new Promise((done) => {
@@ -99,5 +101,7 @@ createServer(async (req, res) => {
 		writeFileSync(join(dir, "result.json"), JSON.stringify(result));
 		file.end();
 		if (!res.destroyed) res.end(`\n@@FILES ${JSON.stringify(result)}\n`);
+		// 작업 중 체크아웃으로 에이전트 코드가 바뀌었으면 종료 → 서비스(launchd/systemd)가 새 코드로 재시작
+		if (readFileSync(self, "utf8") !== selfSource) { console.log("[agent] 코드 갱신 → 재시작"); setTimeout(() => process.exit(0), 1000); }
 	}
 }).listen(port, host, () => console.log(`[agent] ${host}:${port} 대기 (소스 ${root})`));
