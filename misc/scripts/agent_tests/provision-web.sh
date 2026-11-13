@@ -23,17 +23,27 @@ step "Emscripten $ver"
 source "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1
 echo "emcc: $(emcc --version | head -1)"
 
+if [ "$(uname -s)" = "Darwin" ]; then
+	# macOS: 시스템 브라우저 사용 (내려받기 없음). Safari = safaridriver 내장, Chrome = 설치돼 있으면 사용
+	step "브라우저 (시스템)"
+	command -v safaridriver >/dev/null && echo "safari: $(safaridriver --version 2>&1 | head -1)" || echo "safari: safaridriver 없음"
+	[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ] && echo "chrome: 있음" || echo "chrome: 없음 (Safari 만 측정)"
+	echo "※ Safari 자동화 1회 허용 필요: Safari 설정 → 개발자 → '원격 자동화 허용'"
+	echo "✔ provision-web 완료"
+	exit 0
+fi
+
 dir="$HOME/.cache/godot-enhanced-web"
 mkdir -p "$dir" && cd "$dir"
 step "npm: playwright"
 [ -f package.json ] || npm init -y >/dev/null
 [ -d node_modules/playwright ] || npm install --no-fund --no-audit playwright@1.49.1
 
-step "브라우저 내려받기: chromium, webkit"
-npx -y playwright install chromium webkit
+step "브라우저 내려받기: chromium (리눅스)"
+npx -y playwright install chromium
 
 step "브라우저 실행 확인"
-for b in chromium webkit; do
+for b in chromium; do
 	if node -e "setTimeout(()=>{console.error('60초 안에 안 뜸');process.exit(1)},60000).unref();require('playwright')['$b'].launch().then(b=>b.close()).then(()=>process.exit(0)).catch(e=>{console.error(String(e).split('\n').slice(0,3).join(' | '));process.exit(1)})"; then echo "$b: 실행 OK"
 	else echo "$b: 실행 실패 (리눅스는 시스템 라이브러리 누락 가능)"; fi
 done
