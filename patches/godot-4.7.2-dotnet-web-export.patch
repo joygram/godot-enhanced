@@ -1,0 +1,1042 @@
+diff --git a/modules/mono/build_scripts/mono_configure.py b/modules/mono/build_scripts/mono_configure.py
+index 98c50dcc22..a5feffba32 100644
+--- a/modules/mono/build_scripts/mono_configure.py
++++ b/modules/mono/build_scripts/mono_configure.py
+@@ -1,3 +1,9 @@
++import glob
++import os
++import os.path
++import shutil
++
++
+ def is_desktop(platform):
+     return platform in ["windows", "macos", "linuxbsd"]
+ 
+@@ -11,12 +17,161 @@ def module_supports_tools_on(platform):
+ 
+ 
+ def configure(env, env_mono):
+-    # is_android = env["platform"] == "android"
+-    # is_web = env["platform"] == "web"
+-    # is_ios = env["platform"] == "ios"
+-    # is_ios_sim = is_ios and env["arch"] in ["x86_32", "x86_64"]
+-
+     if env.editor_build:
+         if not module_supports_tools_on(env["platform"]):
+             raise RuntimeError("This module does not currently support building for this platform for editor builds.")
+         env_mono.Append(CPPDEFINES=["GD_MONO_HOT_RELOAD"])
++
++    if env["platform"] == "web":
++        rid = get_rid(env["platform"], env["arch"])
++
++        this_script_dir = os.path.dirname(os.path.realpath(__file__))
++        module_dir = os.path.abspath(os.path.join(this_script_dir, os.pardir))
++        get_runtime_pack_project_path = os.path.join(module_dir, "runtime", "GetRuntimePack")
++
++        mono_runtime_copy_path = os.path.join(get_runtime_pack_project_path, "bin", "mono_runtime")
++        try:
++            shutil.rmtree(mono_runtime_copy_path)
++        except FileNotFoundError:
++            # It's fine if this directory doesn't exist.
++            pass
++
++        import subprocess
++        exit_code = subprocess.call(
++            [
++                "dotnet", "publish",
++                get_runtime_pack_project_path,
++                "-r", "browser-wasm",
++                "--self-contained",
++                "-c", "Release",
++            ]
++        )
++        if exit_code != 0:
++            raise RuntimeError("Couldn't retrieve Mono runtime pack for '" + rid + "'.")
++
++        with open(os.path.join(get_runtime_pack_project_path, "bin", rid, "runtime-pack-dir.txt")) as f:
++            mono_runtime_path = os.path.join(f.readline().strip(), "runtimes", rid, "native")
++            shutil.copytree(mono_runtime_path, mono_runtime_copy_path)
++            mono_runtime_path = mono_runtime_copy_path
++
++        # The default Mono runtime uses WASM exceptions.
++        env.Append(CCFLAGS=["-fwasm-exceptions"])
++        env.Append(LINKFLAGS=["-fwasm-exceptions"])
++
++        env_mono.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "mono-2.0"))
++
++        env_mono.Append(LIBPATH=[mono_runtime_path])
++
++        # Mono libraries.
++        add_mono_library(env, "libmonosgen-2.0.a", mono_runtime_path)
++        add_mono_library(env, "libmono-wasm-eh-wasm.a", mono_runtime_path)
++        add_mono_library(env, "libmono-ee-interp.a", mono_runtime_path)
++        add_mono_library(env, "libSystem.Native.a", mono_runtime_path)
++        add_mono_library(env, "libSystem.Globalization.Native.a", mono_runtime_path)
++        add_mono_library(env, "libSystem.IO.Compression.Native.a", mono_runtime_path)
++        add_mono_library(env, "wasm-bundled-timezones.a", mono_runtime_path)
++        add_mono_library(env, "libmono-wasm-simd.a", mono_runtime_path)
++        add_mono_library(env, "libmono-icall-table.a", mono_runtime_path)
++        add_mono_library(env, "libicuuc.a", mono_runtime_path)
++        add_mono_library(env, "libicudata.a", mono_runtime_path)
++        add_mono_library(env, "libicui18n.a", mono_runtime_path)
++        add_mono_library(env, "libz.a", mono_runtime_path)
++
++        # Mono components.
++        add_mono_component(env, "debugger", mono_runtime_path)
++        add_mono_component(env, "diagnostics_tracing", mono_runtime_path)
++        add_mono_component(env, "hot_reload", mono_runtime_path)
++        add_mono_component(env, "marshal-ilgen", mono_runtime_path)
++
++        # WASM additional sources.
++        env_thirdparty = env_mono.Clone()
++        env_thirdparty.disable_warnings()
++        env_thirdparty.Append(CPPDEFINES=["GEN_PINVOKE"])
++        if env["dlink_enabled"]:
++            env_thirdparty.Append(CPPDEFINES=["WASM_SUPPORTS_DLOPEN"])
++        env_thirdparty.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "wasm"))
++        get_runtime_pack_project_includes = os.path.join(get_runtime_pack_project_path, "obj", "Release", "net9.0", rid, "wasm", "for-publish")
++
++        aot_dir = env.get("mono_wasm_aot_dir", "")
++        if aot_dir:
++            # Link a game's AOT-compiled assemblies into the template. The game's publish generated
++            # the tables runtime.c and pinvoke.c include (driver-gen.c registers the AOT modules and
++            # selects llvmonly+interpreter mode), so use its folder instead of GetRuntimePack's.
++            aot_dir = os.path.abspath(os.path.expanduser(aot_dir))
++            if not os.path.isfile(os.path.join(aot_dir, "driver-gen.c")):
++                raise RuntimeError(
++                    "mono_wasm_aot_dir '" + aot_dir + "' has no driver-gen.c. Publish the game with RunAOTCompilation=true first."
++                )
++            aot_objects = sorted(glob.glob(os.path.join(aot_dir, "*.dll.o")))
++            if not aot_objects:
++                raise RuntimeError("mono_wasm_aot_dir '" + aot_dir + "' has no AOT objects (*.dll.o).")
++            print("Linking " + str(len(aot_objects)) + " AOT-compiled assemblies from '" + aot_dir + "'.")
++            get_runtime_pack_project_includes = aot_dir
++            env_thirdparty.Append(CPPDEFINES=["ENABLE_AOT", "DRIVER_GEN"])
++            env_mono.Append(CPPDEFINES=["GD_MONO_WASM_AOT"])
++            env.Append(LINKFLAGS=aot_objects)
++            # SCons doesn't treat files in LINKFLAGS as inputs; platform/web/SCsub makes the program
++            # depend on these, so a new AOT compile relinks the template.
++            env.Append(WEB_LINK_DEPENDS=aot_objects)
++
++        env_thirdparty.Prepend(CPPPATH=os.path.join(get_runtime_pack_project_includes))
++        env_thirdparty.add_source_files(
++            env.modules_sources,
++            [
++                os.path.join(mono_runtime_path, "src", "runtime.c"),
++                os.path.join(mono_runtime_path, "src", "driver.c"),
++                os.path.join(mono_runtime_path, "src", "corebindings.c"),
++                os.path.join(mono_runtime_path, "src", "pinvoke.c"),
++            ],
++        )
++
++        env.AddJSLibraries([os.path.join(mono_runtime_path, "src", "es6", "dotnet.es6.lib.js")])
++
++
++"""
++Get the .NET runtime identifier for the given Godot platform and architecture names.
++"""
++def get_rid(platform: str, arch: str):
++    # Web runtime identifier is always browser-wasm.
++    if platform == "web":
++        return "browser-wasm"
++
++    # Platform renames.
++    if platform == "macos":
++        platform = "osx"
++    elif platform == "linuxbsd":
++        platform = "linux"
++
++    # Arch renames.
++    if arch == "x86_32":
++        arch = "x86"
++    elif arch == "x86_64":
++        arch = "x64"
++    elif arch == "arm32":
++        arch = "arm"
++
++    return platform + "-" + arch
++
++
++"""
++Link mono components statically (use the stubs to load them dynamically at runtime).
++See: https://github.com/dotnet/runtime/blob/main/docs/design/mono/components.md
++"""
++def add_mono_component(env, name: str, mono_runtime_path: str, is_stub: bool = False):
++    stub_suffix = "-stub" if is_stub else ""
++    component_filename = "libmono-component-" + name + stub_suffix + "-static.a"
++    add_mono_library(env, component_filename, mono_runtime_path)
++
++
++"""
++Link mono library archive (.a) statically.
++"""
++def add_mono_library(env, filename: str, mono_runtime_path: str):
++    assert(filename.endswith(".a"))
++    env.Append(
++        LINKFLAGS=[
++            "-Wl,-whole-archive",
++            os.path.join(mono_runtime_path, filename),
++            "-Wl,-no-whole-archive",
++        ]
++    )
+diff --git a/modules/mono/config.py b/modules/mono/config.py
+index 24d028a9d0..f447ce2573 100644
+--- a/modules/mono/config.py
++++ b/modules/mono/config.py
+@@ -5,6 +5,19 @@ def can_build(env, platform):
+     return True
+ 
+ 
++def get_opts(platform):
++    if platform != "web":
++        return []
++    return [
++        (
++            "mono_wasm_aot_dir",
++            "Web only: the wasm/for-publish folder of a game's AOT publish (RunAOTCompilation=true). "
++            + "Its AOT objects and generated tables are linked into the template, which then only suits that build.",
++            "",
++        ),
++    ]
++
++
+ def configure(env):
+     # Check if the platform has marked mono as supported.
+     supported = env.get("supported", [])
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Godot.NET.Sdk.csproj b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Godot.NET.Sdk.csproj
+index 1e256dd1bf..fce2363bb1 100644
+--- a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Godot.NET.Sdk.csproj
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Godot.NET.Sdk.csproj
+@@ -36,6 +36,9 @@
+       <Link>Sdk\SdkPackageVersions.props</Link>
+     </None>
+     <None Include="Sdk\Android.props" Pack="true" PackagePath="Sdk" />
++    <None Include="Sdk\Android.targets" Pack="true" PackagePath="Sdk" />
++    <None Include="Sdk\Browser.props" Pack="true" PackagePath="Sdk" />
++    <None Include="Sdk\Browser.targets" Pack="true" PackagePath="Sdk" />
+     <None Include="Sdk\iOS.props" Pack="true" PackagePath="Sdk" />
+     <None Include="Sdk\iOS.targets" Pack="true" PackagePath="Sdk" />
+   </ItemGroup>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.props b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.props
+index 3926a4b22a..8c119d5413 100644
+--- a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.props
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.props
+@@ -1,5 +1,2 @@
+ <Project>
+-  <PropertyGroup>
+-    <UseMonoRuntime Condition=" '$(UseMonoRuntime)' == '' and '$(PublishAot)' != 'true' ">true</UseMonoRuntime>
+-  </PropertyGroup>
+ </Project>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.targets b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.targets
+new file mode 100644
+index 0000000000..3926a4b22a
+--- /dev/null
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Android.targets
+@@ -0,0 +1,5 @@
++<Project>
++  <PropertyGroup>
++    <UseMonoRuntime Condition=" '$(UseMonoRuntime)' == '' and '$(PublishAot)' != 'true' ">true</UseMonoRuntime>
++  </PropertyGroup>
++</Project>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.props b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.props
+new file mode 100644
+index 0000000000..8c119d5413
+--- /dev/null
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.props
+@@ -0,0 +1,2 @@
++<Project>
++</Project>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.targets b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.targets
+new file mode 100644
+index 0000000000..b5423f5769
+--- /dev/null
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Browser.targets
+@@ -0,0 +1,26 @@
++<Project>
++  <PropertyGroup>
++    <UseMonoRuntime Condition=" '$(UseMonoRuntime)' == '' and '$(PublishAot)' != 'true' ">true</UseMonoRuntime>
++
++    <!-- Default to relinking in ExportDebug and ExportRelease configurations. -->
++    <WasmBuildNative Condition=" '$(WasmBuildNative)' == '' and '$(Configuration)' == 'ExportDebug' ">true</WasmBuildNative>
++    <WasmBuildNative Condition=" '$(WasmBuildNative)' == '' and '$(Configuration)' == 'ExportRelease' ">true</WasmBuildNative>
++  </PropertyGroup>
++
++  <!-- Configuration for the Mono WASM runtime. Must match the features enabled on GetRuntimePack.csproj. -->
++  <PropertyGroup>
++    <WasmEnableThreads>true</WasmEnableThreads>
++    <WasmEnableExceptionHandling>true</WasmEnableExceptionHandling>
++    <WasmEnableSIMD>true</WasmEnableSIMD>
++  </PropertyGroup>
++
++  <!-- Godot doesn't load globalization data so we must enable invariant mode. -->
++  <PropertyGroup>
++    <InvariantGlobalization>true</InvariantGlobalization>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <TrimmerRootAssembly Include="GodotSharp" />
++    <TrimmerRootAssembly Include="$(TargetName)" />
++  </ItemGroup>
++</Project>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.props b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.props
+index aac9a3591e..662de6f4af 100644
+--- a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.props
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.props
+@@ -103,6 +103,8 @@
+     <_GodotDefineConstants>$(_GodotDefineConstants);$(_GodotPlatformConstants);$(_GodotVersionConstants)</_GodotDefineConstants>
+   </PropertyGroup>
+ 
++  <!-- Platform-specific build properties. -->
+   <Import Project="$(MSBuildThisFileDirectory)\Android.props" Condition=" '$(GodotTargetPlatform)' == 'android' " />
++  <Import Project="$(MSBuildThisFileDirectory)\Browser.props" Condition=" '$(GodotTargetPlatform)' == 'web' " />
+   <Import Project="$(MSBuildThisFileDirectory)\iOS.props" Condition=" '$(GodotTargetPlatform)' == 'ios' " />
+ </Project>
+diff --git a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.targets b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.targets
+index 6eee4de3cb..e3f52c659c 100644
+--- a/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.targets
++++ b/modules/mono/editor/Godot.NET.Sdk/Godot.NET.Sdk/Sdk/Sdk.targets
+@@ -48,7 +48,9 @@
+     <Error Text="The project or one of its dependencies references GodotSharp packages which is incompatible with the active Godot C# bindings. The active C# bindings is Godot .NET." Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('GodotSharp.dll'))" />
+   </Target>
+ 
+-  <!-- iOS-specific build targets -->
++  <!-- Platform-specific build targets. -->
++  <Import Project="$(MSBuildThisFileDirectory)\Android.targets" Condition=" '$(GodotTargetPlatform)' == 'android' " />
++  <Import Project="$(MSBuildThisFileDirectory)\Browser.targets" Condition=" '$(GodotTargetPlatform)' == 'web' " />
+   <Import Project="$(MSBuildThisFileDirectory)\iOS.targets" Condition=" '$(GodotTargetPlatform)' == 'ios' " />
+ 
+ </Project>
+diff --git a/modules/mono/editor/GodotTools/GodotTools/Export/ExportPlugin.cs b/modules/mono/editor/GodotTools/GodotTools/Export/ExportPlugin.cs
+index fc38b6ab9d..2a5ae1f22a 100644
+--- a/modules/mono/editor/GodotTools/GodotTools/Export/ExportPlugin.cs
++++ b/modules/mono/editor/GodotTools/GodotTools/Export/ExportPlugin.cs
+@@ -179,12 +179,6 @@ namespace GodotTools.Export
+             if (!TryDeterminePlatformFromOSName(osName, out string? platform))
+                 throw new NotSupportedException("Target platform not supported.");
+ 
+-            if (!new[] { OS.Platforms.Windows, OS.Platforms.LinuxBSD, OS.Platforms.MacOS, OS.Platforms.Android, OS.Platforms.iOS }
+-                    .Contains(platform))
+-            {
+-                throw new NotImplementedException("Target platform not yet implemented.");
+-            }
+-
+             bool useAndroidLinuxBionic = (bool)GetOption("dotnet/android_use_linux_bionic");
+             PublishConfig publishConfig = new()
+             {
+@@ -225,6 +219,11 @@ namespace GodotTools.Export
+                 }
+             }
+ 
++            if (features.Contains("wasm32"))
++            {
++                publishConfig.Archs.Add("wasm32");
++            }
++
+             var targets = new List<PublishConfig> { publishConfig };
+ 
+             if (platform == OS.Platforms.iOS)
+@@ -242,7 +241,7 @@ namespace GodotTools.Export
+ 
+             List<string> outputPaths = new();
+ 
+-            bool embedBuildResults = ((bool)GetOption("dotnet/embed_build_outputs") || platform == OS.Platforms.Android) && platform != OS.Platforms.MacOS;
++            bool embedBuildResults = ((bool)GetOption("dotnet/embed_build_outputs") || platform == OS.Platforms.Android || platform == OS.Platforms.Web) && platform != OS.Platforms.MacOS;
+ 
+             var exportedJars = new HashSet<string>();
+ 
+@@ -349,6 +348,15 @@ namespace GodotTools.Export
+                             // We get called back for both directories and files, but we only package files for now.
+                             if (isFile)
+                             {
++                                if (path.EndsWith(".c") || path.EndsWith(".h") || path.EndsWith(".ts") || path.EndsWith(".js") || path.EndsWith(".js.map") || path.EndsWith(".js.symbols") || path.EndsWith(".rsp") || path.EndsWith(".wasm"))
++                                {
++                                    // Ignore source files and other output files that we don't use in the final build.
++                                    // These files may be included by some runtime packs but we don't need them at this
++                                    // point. Libraries are provided as `.dll` and/or `.a` archive files (we currently
++                                    // don't support Webcil wrapped wasm files).
++                                    return;
++                                }
++
+                                 if (embedBuildResults)
+                                 {
+                                     if (platform == OS.Platforms.Android)
+@@ -510,6 +518,7 @@ namespace GodotTools.Export
+                 "arm64-v8a" => "arm64",
+                 "arm32" => "arm",
+                 "arm64" => "arm64",
++                "wasm32" => "wasm",
+                 _ => throw new ArgumentOutOfRangeException(nameof(arch), arch, "Unexpected architecture")
+             };
+         }
+diff --git a/modules/mono/mono_gd/gd_mono.cpp b/modules/mono/mono_gd/gd_mono.cpp
+index 8805ab6f0a..d259dcf685 100644
+--- a/modules/mono/mono_gd/gd_mono.cpp
++++ b/modules/mono/mono_gd/gd_mono.cpp
+@@ -63,20 +63,34 @@
+ #endif
+ #endif
+ 
++#ifdef WEB_ENABLED
++#include <mono/jit/jit.h>
++#include <mono/jit/mono-private-unstable.h>
++#include <mono/metadata/appdomain.h>
++#include <mono/metadata/assembly.h>
++#include <mono/metadata/class.h>
++#include <mono/metadata/object.h>
++#include <mono/utils/mono-logger.h>
++#endif
++
+ GDMono *GDMono::singleton = nullptr;
+ 
+ namespace {
++#ifndef WEB_ENABLED
+ hostfxr_initialize_for_dotnet_command_line_fn hostfxr_initialize_for_dotnet_command_line = nullptr;
+ hostfxr_initialize_for_runtime_config_fn hostfxr_initialize_for_runtime_config = nullptr;
+ hostfxr_get_runtime_delegate_fn hostfxr_get_runtime_delegate = nullptr;
+ hostfxr_close_fn hostfxr_close = nullptr;
++#endif
+ 
+ #ifndef TOOLS_ENABLED
++#ifndef WEB_ENABLED
+ typedef int(CORECLR_DELEGATE_CALLTYPE *coreclr_create_delegate_fn)(void *hostHandle, unsigned int domainId, const char *entryPointAssemblyName, const char *entryPointTypeName, const char *entryPointMethodName, void **delegate);
+ typedef int(CORECLR_DELEGATE_CALLTYPE *coreclr_initialize_fn)(const char *exePath, const char *appDomainFriendlyName, int propertyCount, const char **propertyKeys, const char **propertyValues, void **hostHandle, unsigned int *domainId);
+ 
+ coreclr_create_delegate_fn coreclr_create_delegate = nullptr;
+ coreclr_initialize_fn coreclr_initialize = nullptr;
++#endif
+ 
+ #ifdef ANDROID_ENABLED
+ mono_install_assembly_preload_hook_fn mono_install_assembly_preload_hook = nullptr;
+@@ -85,8 +99,44 @@ mono_assembly_name_get_culture_fn mono_assembly_name_get_culture = nullptr;
+ mono_image_open_from_data_with_name_fn mono_image_open_from_data_with_name = nullptr;
+ mono_assembly_load_from_full_fn mono_assembly_load_from_full = nullptr;
+ #endif
++
++#ifdef WEB_ENABLED
++extern "C" {
++void mono_wasm_load_runtime(int debug_level);
++}
++
++// Mono's debug level for the web runtime. Any value other than 0 turns on debugger support and
++// turns off every interpreter optimisation, which makes interpreted C# several times slower.
++// Nothing can attach a debugger to a Godot web export, so release templates use 0.
++#ifndef GD_MONO_WASM_DEBUG_LEVEL
++#ifdef DEBUG_ENABLED
++#define GD_MONO_WASM_DEBUG_LEVEL 1
++#else
++#define GD_MONO_WASM_DEBUG_LEVEL 0
++#endif
+ #endif
+ 
++#ifdef GD_MONO_WASM_AOT
++// Templates built with AOT-compiled assemblies (mono_wasm_aot_dir) log what Mono's AOT loader
++// does with each assembly, so a mismatch that silently falls back to the interpreter shows up.
++void gd_mono_wasm_log(const char *p_log_domain, const char *p_log_level, const char *p_message, mono_bool p_fatal, void *p_user_data) {
++	print_line(vformat(".NET: Mono %s: %s", p_log_level, String::utf8(p_message).strip_edges()));
++	if (p_fatal) {
++		CRASH_NOW();
++	}
++}
++#endif
++#endif
++#endif // !TOOLS_ENABLED
++
++#ifdef TOOLS_ENABLED
++using godot_plugins_initialize_fn = bool (*)(void *, bool, gdmono::PluginCallbacks *, GDMonoCache::ManagedCallbacks *, const void **, int32_t);
++#else
++using godot_plugins_initialize_fn = bool (*)(void *, GDMonoCache::ManagedCallbacks *, const void **, int32_t);
++#endif
++
++#ifndef WEB_ENABLED
++
+ #ifdef _WIN32
+ static_assert(sizeof(char_t) == sizeof(char16_t));
+ using HostFxrCharString = Char16String;
+@@ -422,12 +472,6 @@ load_assembly_and_get_function_pointer_fn initialize_hostfxr_self_contained(
+ }
+ #endif
+ 
+-#ifdef TOOLS_ENABLED
+-using godot_plugins_initialize_fn = bool (*)(void *, bool, gdmono::PluginCallbacks *, GDMonoCache::ManagedCallbacks *, const void **, int32_t);
+-#else
+-using godot_plugins_initialize_fn = bool (*)(void *, GDMonoCache::ManagedCallbacks *, const void **, int32_t);
+-#endif
+-
+ #ifdef TOOLS_ENABLED
+ godot_plugins_initialize_fn initialize_hostfxr_and_godot_plugins(bool &r_runtime_initialized) {
+ 	godot_plugins_initialize_fn godot_plugins_initialize = nullptr;
+@@ -520,8 +564,10 @@ godot_plugins_initialize_fn try_load_native_aot_library(void *&r_aot_dll_handle)
+ }
+ #endif
+ 
++#endif // !WEB_ENABLED
++
+ #ifndef TOOLS_ENABLED
+-#ifdef ANDROID_ENABLED
++#if defined(ANDROID_ENABLED) || defined(WEB_ENABLED)
+ MonoAssembly *load_assembly_from_pck(MonoAssemblyName *p_assembly_name, char **p_assemblies_path, void *p_user_data) {
+ 	constexpr bool ref_only = false;
+ 
+@@ -573,8 +619,9 @@ MonoAssembly *load_assembly_from_pck(MonoAssemblyName *p_assembly_name, char **p
+ 
+ 	return assembly;
+ }
+-#endif
++#endif // ANDROID_ENABLED || WEB_ENABLED
+ 
++#ifndef WEB_ENABLED
+ godot_plugins_initialize_fn initialize_coreclr_and_godot_plugins(bool &r_runtime_initialized) {
+ 	godot_plugins_initialize_fn godot_plugins_initialize = nullptr;
+ 
+@@ -606,8 +653,71 @@ godot_plugins_initialize_fn initialize_coreclr_and_godot_plugins(bool &r_runtime
+ 
+ 	return godot_plugins_initialize;
+ }
++#endif // !WEB_ENABLED
++
++#ifdef WEB_ENABLED
++MonoMethod *_initialize_method;
++
++godot_plugins_initialize_fn initialize_monovm_and_godot_plugins(bool &r_runtime_initialized) {
++	mono_install_assembly_preload_hook(&load_assembly_from_pck, nullptr);
++
++	mono_wasm_load_runtime(GD_MONO_WASM_DEBUG_LEVEL);
++
++#ifdef GD_MONO_WASM_AOT
++	mono_trace_set_log_handler(gd_mono_wasm_log, nullptr);
++	mono_trace_set_level_string("info");
++	mono_trace_set_mask_string("aot");
+ #endif
+ 
++	r_runtime_initialized = true;
++
++	print_verbose(".NET: Mono initialized");
++
++	MonoDomain *root_domain = mono_get_root_domain();
++
++	ERR_FAIL_NULL_V_MSG(root_domain, nullptr, ".NET: Failed to load root domain.");
++
++	String assembly_name = Path::get_csharp_project_name();
++	MonoAssemblyName *aname = mono_assembly_name_new(assembly_name.utf8().get_data());
++	ERR_FAIL_NULL_V_MSG(aname, nullptr, ".NET: Failed to parse assembly name '" + assembly_name + "'.");
++
++	MonoImageOpenStatus status;
++	MonoAssembly *assembly = mono_assembly_load(aname, nullptr, &status);
++	ERR_FAIL_COND_V_MSG(assembly == nullptr || status != MONO_IMAGE_OK, nullptr, vformat(".NET: Failed to load assembly with status '0x%08x'.", status));
++
++	mono_assembly_name_free(aname);
++
++	MonoImage *img = mono_assembly_get_image(assembly);
++	MonoClass *kls = mono_class_from_name(img, "GodotPlugins.Game", "Main");
++	ERR_FAIL_NULL_V_MSG(kls, nullptr, ".NET: Couldn't find class 'GodotPlugins.Game.Main'.");
++
++	_initialize_method = mono_class_get_method_from_name(kls, "InitializeFromGameProject", 4);
++	ERR_FAIL_NULL_V_MSG(_initialize_method, nullptr, ".NET: Couldn't find method 'GodotPlugins.Game.Main.InitializeFromGameProject'.");
++
++	godot_plugins_initialize_fn godot_plugins_initialize = [](void *godot_dll_handler, GDMonoCache::ManagedCallbacks *out_managed_callbacks, const void **unmanaged_callbacks, int32_t unmanaged_callbacks_size) {
++		void *args[] = {
++			&godot_dll_handler,
++			&out_managed_callbacks,
++			&unmanaged_callbacks,
++			&unmanaged_callbacks_size
++		};
++
++		MonoObject *exc = nullptr;
++		MonoObject *ret = mono_runtime_invoke(_initialize_method, nullptr, args, &exc);
++		if (unlikely(exc != nullptr)) {
++			CRASH_NOW();
++		}
++
++		return *(bool *)mono_object_unbox(ret);
++	};
++
++	ERR_FAIL_NULL_V_MSG(godot_plugins_initialize, nullptr, ".NET: Failed to get GodotPlugins initialization function pointer");
++
++	return godot_plugins_initialize;
++}
++#endif // WEB_ENABLED
++#endif // !TOOLS_ENABLED
++
+ } // namespace
+ 
+ bool GDMono::should_initialize() {
+@@ -643,7 +753,7 @@ void GDMono::initialize() {
+ 
+ 	godot_plugins_initialize_fn godot_plugins_initialize = nullptr;
+ 
+-#if !defined(APPLE_EMBEDDED_ENABLED)
++#if !defined(APPLE_EMBEDDED_ENABLED) && !defined(WEB_ENABLED)
+ 	// Check that the .NET assemblies directory exists before trying to use it.
+ 	if (!DirAccess::exists(GodotSharpDirs::get_api_assemblies_dir())) {
+ 		OS::get_singleton()->alert(vformat(RTR("Unable to find the .NET assemblies directory.\nMake sure the '%s' directory exists and contains the .NET assemblies."), GodotSharpDirs::get_api_assemblies_dir()), RTR(".NET assemblies not found"));
+@@ -651,6 +761,11 @@ void GDMono::initialize() {
+ 	}
+ #endif
+ 
++#ifdef WEB_ENABLED
++	// The web platform always uses Mono to initialize the .NET runtime.
++	godot_plugins_initialize = initialize_monovm_and_godot_plugins(runtime_initialized);
++	ERR_FAIL_NULL_MSG(godot_plugins_initialize, ".NET: Failed to initialize Mono runtime.");
++#else
+ 	if (load_hostfxr(hostfxr_dll_handle)) {
+ 		godot_plugins_initialize = initialize_hostfxr_and_godot_plugins(runtime_initialized);
+ 		ERR_FAIL_NULL(godot_plugins_initialize);
+@@ -669,8 +784,12 @@ void GDMono::initialize() {
+ 		if (godot_plugins_initialize == nullptr) {
+ 			ERR_FAIL_MSG(".NET: Failed to load hostfxr");
+ 		}
+-#else
++#endif // !TOOLS_ENABLED
++	}
++#endif // !WEB_ENABLED
+ 
++	if (!runtime_initialized) {
++#ifdef TOOLS_ENABLED
+ 		// Show a message box to the user to make the problem explicit (and explain a potential crash).
+ 		OS::get_singleton()->alert(TTR("Unable to load .NET runtime, specifically hostfxr.\nAttempting to create/edit a project will lead to a crash.\n\nPlease install the .NET SDK 8.0 or later from https://get.dot.net and restart Godot."), TTR("Failed to load .NET runtime"));
+ 		ERR_FAIL_MSG(".NET: Failed to load hostfxr");
+@@ -684,7 +803,7 @@ void GDMono::initialize() {
+ 
+ 	void *godot_dll_handle = nullptr;
+ 
+-#if defined(UNIX_ENABLED) && !defined(MACOS_ENABLED) && !defined(APPLE_EMBEDDED_ENABLED)
++#if defined(UNIX_ENABLED) && !defined(MACOS_ENABLED) && !defined(APPLE_EMBEDDED_ENABLED) && !defined(WEB_ENABLED)
+ 	// Managed code can access it on its own on other platforms
+ 	godot_dll_handle = dlopen(nullptr, RTLD_NOW);
+ #endif
+diff --git a/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
+new file mode 100644
+index 0000000000..020e2a1ea5
+--- /dev/null
++++ b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
+@@ -0,0 +1,59 @@
++<!--
++  Adapted from:
++  https://github.com/lambdageek/monovm-embed-sample/blob/c35f945509b0d1e4f4412a7076c9e769708c3ff1/src/GetRuntimePack/GetRuntimePack.csproj
++-->
++<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net9.0</TargetFramework>
++  </PropertyGroup>
++
++  <!-- This plus a non-empty $(RuntimeIdentifier) are enough to choose Mono. -->
++  <PropertyGroup>
++    <UseMonoRuntime>true</UseMonoRuntime>
++  </PropertyGroup>
++
++  <!-- TODO: Hack to make the included stubs get the correct name in pinvoke-table.h -->
++  <PropertyGroup>
++    <AssemblyName>GodotSharp</AssemblyName>
++    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
++  </PropertyGroup>
++
++  <!-- Configuration for the Mono WASM runtime. Must match the features supported by the Godot build. -->
++  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
++    <WasmEnableThreads>true</WasmEnableThreads>
++    <WasmEnableExceptionHandling>true</WasmEnableExceptionHandling>
++    <WasmEnableSIMD>true</WasmEnableSIMD>
++  </PropertyGroup>
++
++  <!--
++    This is required to prevent trimming the GodotSharp stub functions included in this assembly for 'browser-wasm'.
++    Otherwise, the generator won't add them to 'pinvoke-table.h'.
++  -->
++  <ItemGroup>
++    <TrimmerRootAssembly Include="$(TargetName)" />
++  </ItemGroup>
++
++  <!--
++    This is required to prevent trimming functions in the generated sources in 'browser-wasm/wasm/for-publish'
++    Otherwise, initializing the runtime fails with 'Environment.FailFast'.
++  -->
++  <ItemGroup>
++    <TrimmerRootAssembly Include="System.Private.CoreLib" />
++  </ItemGroup>
++
++  <Target Name="EchoRuntimeLocation" AfterTargets="ResolveFrameworkReferences">
++    <Error Condition="'$(RuntimeIdentifier)' == ''" Message="Need to set RuntimeIdentifier to the target platform RID" />
++    <ItemGroup>
++      <ProbablyMono Include="@(ResolvedRuntimePack)" Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
++    </ItemGroup>
++    <Error Condition="@(ProbablyMono->Count()) != 1" Text="Expected to get exactly one Microsoft.NETCore.App.Mono resolved runtime pack, got @(ProbablyMono->Count())" />
++    <PropertyGroup>
++      <LikelyMono>@(ProbablyMono)</LikelyMono>
++    </PropertyGroup>
++    <Error Condition="!$(LikelyMono.Contains('Microsoft.NETCore.App.Runtime.Mono'))" Message="Expected '@(ProbablyMono)' to include 'Microsoft.NETCore.App.Runtime.Mono' in the name." />
++    <Message Importance="High" Text="Runtime pack %(ProbablyMono.Identity) is in: %(ProbablyMono.PackageDirectory)"/>
++    <WriteLinesToFile Overwrite="true" File="bin\$(RuntimeIdentifier)\runtime-pack-dir.txt" Lines="%(ProbablyMono.PackageDirectory)" />
++  </Target>
++
++</Project>
+diff --git a/modules/mono/runtime/GetRuntimePack/ManagedCallbacks.cs b/modules/mono/runtime/GetRuntimePack/ManagedCallbacks.cs
+new file mode 100644
+index 0000000000..9e6582c5a5
+--- /dev/null
++++ b/modules/mono/runtime/GetRuntimePack/ManagedCallbacks.cs
+@@ -0,0 +1,218 @@
++using System;
++using System.Runtime.InteropServices;
++using Godot.NativeInterop;
++
++namespace Godot.NativeInterop
++{
++    public enum godot_bool : byte { }
++
++    public ref struct godot_ref { }
++
++    public ref struct godot_variant_call_error { }
++
++    public ref struct godot_csharp_type_info { }
++
++    public ref struct godot_variant { }
++
++    public ref struct godot_string { }
++
++    public ref struct godot_string_name { }
++
++    public ref struct godot_array { }
++
++    public ref struct godot_dictionary { }
++}
++
++namespace Godot
++{
++    public class SignalAwaiter
++    {
++        [UnmanagedCallersOnly]
++        internal static unsafe void SignalCallback(IntPtr awaiterGCHandlePtr, godot_variant** args, int argCount, godot_bool* outAwaiterIsNull) { }
++    }
++
++    internal static class DelegateUtils
++    {
++        [UnmanagedCallersOnly]
++        internal static godot_bool DelegateEquals(IntPtr delegateGCHandleA, IntPtr delegateGCHandleB)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static int DelegateHash(IntPtr delegateGCHandle)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe int GetArgumentCount(IntPtr delegateGCHandle, godot_bool* outIsValid)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void InvokeWithVariantArgs(IntPtr delegateGCHandle, void* trampoline, godot_variant** args, int argc, godot_variant* outRet) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool TrySerializeDelegateWithGCHandle(IntPtr delegateGCHandle,
++            godot_array* nSerializedData)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool TryDeserializeDelegateWithGCHandle(godot_array* nSerializedData,
++            IntPtr* delegateGCHandle)
++        {
++            throw null!;
++        }
++    }
++
++    internal static class DebuggingUtils
++    {
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetCurrentStackInfo(void* destVector) { }
++    }
++
++    internal static class DisposablesTracker
++    {
++        [UnmanagedCallersOnly]
++        internal static void OnGodotShuttingDown() { }
++    }
++
++    public static class GD
++    {
++        [UnmanagedCallersOnly]
++        internal static void OnCoreApiAssemblyLoaded(godot_bool isDebug) { }
++    }
++}
++
++namespace Godot.Bridge
++{
++    public static class ScriptManagerBridge
++    {
++        [UnmanagedCallersOnly]
++        internal static void FrameCallback() { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe IntPtr CreateManagedForGodotObjectBinding(godot_string_name* nativeTypeName, IntPtr godotObject)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool CreateManagedForGodotObjectScriptInstance(IntPtr scriptPtr, IntPtr godotObject, godot_variant** args, int argCount)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetScriptNativeName(IntPtr scriptPtr, godot_string_name* outRes) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetGlobalClassName(godot_string* scriptPath, godot_string* outBaseType, godot_string* outIconPath, godot_string* outClassName) { }
++
++        [UnmanagedCallersOnly]
++        internal static void SetGodotObjectPtr(IntPtr gcHandlePtr, IntPtr newPtr) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void RaiseEventSignal(IntPtr ownerGCHandlePtr, godot_string_name* eventSignalName, godot_variant** args, int argCount, godot_bool* outOwnerIsNull) { }
++
++        [UnmanagedCallersOnly]
++        internal static godot_bool ScriptIsOrInherits(IntPtr scriptPtr, IntPtr scriptPtrMaybeBase)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool AddScriptBridge(IntPtr scriptPtr, godot_string* scriptPath)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetOrCreateScriptBridgeForPath(godot_string* scriptPath, godot_ref* outScript) { }
++
++        [UnmanagedCallersOnly]
++        internal static void RemoveScriptBridge(IntPtr scriptPtr) { }
++
++        [UnmanagedCallersOnly]
++        internal static godot_bool TryReloadRegisteredScriptWithClass(IntPtr scriptPtr)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void UpdateScriptClassInfo(IntPtr scriptPtr, godot_csharp_type_info* outTypeInfo, godot_array* outMethodsDest, godot_dictionary* outRpcFunctionsDest, godot_dictionary* outEventSignalsDest, godot_ref* outBaseScript) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetPropertyInfoList(IntPtr scriptPtr, delegate* unmanaged<IntPtr, godot_string*, void*, int, void> addPropInfoFunc) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool CallStatic(IntPtr scriptPtr, godot_string_name* method, godot_variant** args, int argCount, godot_variant_call_error* refCallError, godot_variant* ret)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void GetPropertyDefaultValues(IntPtr scriptPtr, delegate* unmanaged<IntPtr, void*, int, void> addDefValFunc) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool SwapGCHandleForType(IntPtr oldGCHandlePtr, IntPtr* outNewGCHandlePtr, godot_bool createWeak)
++        {
++            throw null!;
++        }
++    }
++
++    internal static class CSharpInstanceBridge
++    {
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool Call(IntPtr godotObjectGCHandle, godot_string_name* method, godot_variant** args, int argCount, godot_variant_call_error* refCallError, godot_variant* ret)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool Set(IntPtr godotObjectGCHandle, godot_string_name* name, godot_variant* value)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool Get(IntPtr godotObjectGCHandle, godot_string_name* name, godot_variant* outRet)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static void CallDispose(IntPtr godotObjectGCHandle, godot_bool okIfNull) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void CallToString(IntPtr godotObjectGCHandle, godot_string* outRes, godot_bool* outValid) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe godot_bool HasMethodUnknownParams(IntPtr godotObjectGCHandle, godot_string_name* method)
++        {
++            throw null!;
++        }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void SerializeState(IntPtr godotObjectGCHandle, godot_dictionary* propertiesState, godot_dictionary* signalEventsState) { }
++
++        [UnmanagedCallersOnly]
++        internal static unsafe void DeserializeState(IntPtr godotObjectGCHandle, godot_dictionary* propertiesState, godot_dictionary* signalEventsState) { }
++    }
++
++    internal static class GCHandleBridge
++    {
++        [UnmanagedCallersOnly]
++        internal static void FreeGCHandle(IntPtr gcHandlePtr) { }
++
++        [UnmanagedCallersOnly]
++        internal static godot_bool GCHandleIsTargetCollectible(IntPtr gcHandlePtr)
++        {
++            throw null!;
++        }
++    }
++}
+diff --git a/modules/mono/runtime/GetRuntimePack/Program.cs b/modules/mono/runtime/GetRuntimePack/Program.cs
+new file mode 100644
+index 0000000000..65298f71f6
+--- /dev/null
++++ b/modules/mono/runtime/GetRuntimePack/Program.cs
+@@ -0,0 +1,9 @@
++using System.Diagnostics;
++
++internal class Program
++{
++    internal static void Main()
++    {
++        throw new UnreachableException();
++    }
++}
+diff --git a/platform/web/SCsub b/platform/web/SCsub
+index c5c068093c..20e90f3aa0 100644
+--- a/platform/web/SCsub
++++ b/platform/web/SCsub
+@@ -106,6 +106,11 @@ sys_env.Depends(build[0], sys_env["JS_LIBS"])
+ sys_env.Depends(build[0], sys_env["JS_PRE"])
+ sys_env.Depends(build[0], sys_env["JS_POST"])
+ sys_env.Depends(build[0], sys_env["JS_EXTERNS"])
++# Objects passed straight to the linker (the mono module's AOT-compiled assemblies).
++sys_env.Depends(build[0], sys_env.get("WEB_LINK_DEPENDS", []))
++
++# erase "DOTNET.setup();" call for correct web behavior
++js_fixed = env.NoCache(env.EraseDotnetSetup("#bin/godot${PROGSUFFIX}.fixed.js", build[0]))
+ 
+ engine = [
+     "js/engine/features.js",
+@@ -118,7 +123,7 @@ js_engine = env.CreateEngineFile("#bin/godot${PROGSUFFIX}.engine.js", engine, ex
+ env.Depends(js_engine, externs)
+ 
+ wrap_list = [
+-    build[0],
++    js_fixed,
+     js_engine,
+ ]
+ js_wrapped = env.NoCache(
+diff --git a/platform/web/detect.py b/platform/web/detect.py
+index 57b79b2c3e..f4691d81f5 100644
+--- a/platform/web/detect.py
++++ b/platform/web/detect.py
+@@ -12,6 +12,7 @@ from emscripten_helpers import (
+     create_template_zip,
+     get_template_zip_path,
+     run_closure_compiler,
++    erase_dotnet_setup,
+ )
+ from SCons.Util import WhereIs
+ 
+@@ -91,6 +92,7 @@ def get_flags():
+         # run-time performance.
+         # Note that this overrides the "auto" behavior for target/dev_build.
+         "optimize": "size",
++        "supported": ["mono"],
+     }
+ 
+ 
+@@ -236,6 +238,9 @@ def configure(env: "SConsEnvironment"):
+     # Add method for creating the final zip file
+     env.AddMethod(create_template_zip, "CreateTemplateZip")
+ 
++    # Add method for erasing the "DOTNET.setup();" string
++    env.AddMethod(erase_dotnet_setup, "EraseDotnetSetup")
++
+     # Use TempFileMunge since some AR invocations are too long for cmd.exe.
+     # Use POSIX-style paths, required with TempFileMunge.
+     env["ARCOM_POSIX"] = env["ARCOM"].replace("$TARGET", "$TARGET.posix").replace("$SOURCES", "$SOURCES.posix")
+diff --git a/platform/web/emscripten_helpers.py b/platform/web/emscripten_helpers.py
+index 612e3e87bb..17f5302097 100644
+--- a/platform/web/emscripten_helpers.py
++++ b/platform/web/emscripten_helpers.py
+@@ -1,5 +1,6 @@
+ import json
+ import os
++import re
+ 
+ from SCons.Util import WhereIs
+ 
+@@ -123,6 +124,29 @@ def get_template_zip_path(env):
+     return "#bin/.web_zip"
+ 
+ 
++def erase_dotnet_setup(env, target, source):
++    return env.Command(
++        target=target,
++        source=source,
++        action=erase_dotnet_setup_action,
++    )
++
++
++def erase_dotnet_setup_action(target, source, env):
++    target_path = str(target[0])
++    source_path = str(source[0])
++
++    with open(source_path, encoding='utf-8') as file:
++        text = file.read()
++
++    # erase the string "DOTNET.setup();" accounting for nested parentheses
++    regex = r'DOTNET\.setup\s*\(\s*\{[^{}]*(\{[^{}]*\}[^{}]*)*\}\s*\)\s*;'
++    fixed = re.sub(regex, '', text, 1)
++
++    with open(target_path, 'w', encoding='utf-8') as file:
++        file.write(fixed)
++
++
+ def add_js_libraries(env, libraries):
+     env.Append(JS_LIBS=env.File(libraries))
+ 
+diff --git a/platform/web/export/export_plugin.cpp b/platform/web/export/export_plugin.cpp
+index aded595623..4a3dd1d0b5 100644
+--- a/platform/web/export/export_plugin.cpp
++++ b/platform/web/export/export_plugin.cpp
+@@ -422,18 +422,16 @@ Ref<Texture2D> EditorExportPlatformWeb::get_logo() const {
+ }
+ 
+ bool EditorExportPlatformWeb::has_valid_export_configuration(const Ref<EditorExportPreset> &p_preset, String &r_error, bool &r_missing_templates, bool p_debug) const {
+-#ifdef MODULE_MONO_ENABLED
+-	// Don't check for additional errors, as this particular error cannot be resolved.
+-	r_error += TTR("Exporting to Web is currently not supported in Godot 4 when using C#/.NET. Use Godot 3 to target Web with C#/Mono instead.") + "\n";
+-	r_error += TTR("If this project does not use C#, use a non-C# editor build to export the project.") + "\n";
+-	return false;
+-#else
+-
+ 	String err;
+ 	bool valid = false;
+ 	bool extensions = (bool)p_preset->get("variant/extensions_support");
+ 	bool thread_support = (bool)p_preset->get("variant/thread_support");
+ 
++#ifdef MODULE_MONO_ENABLED
++	// Web export is still a work in progress, keep a message as a warning.
++	err += TTR("Exporting to Web when using C#/.NET is experimental.") + "\n";
++#endif
++
+ 	// Look for export templates (first official, and if defined custom templates).
+ 	bool dvalid = exists_export_template(_get_template_name(extensions, thread_support, true), &err);
+ 	bool rvalid = exists_export_template(_get_template_name(extensions, thread_support, false), &err);
+@@ -459,7 +457,6 @@ bool EditorExportPlatformWeb::has_valid_export_configuration(const Ref<EditorExp
+ 	}
+ 
+ 	return valid;
+-#endif // !MODULE_MONO_ENABLED
+ }
+ 
+ bool EditorExportPlatformWeb::has_valid_project_configuration(const Ref<EditorExportPreset> &p_preset, String &r_error) const {

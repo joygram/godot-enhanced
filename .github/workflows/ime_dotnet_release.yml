@@ -1,0 +1,241 @@
+name: 🧩 C# web export release (patched)
+
+# Builds the C# (.NET) web export kit from this branch:
+#   - mono web templates (release + debug, threaded) and the NuGet packages,
+#   - C# editors for Windows x86_64, macOS arm64 and Linux x86_64,
+# and publishes one zip per platform on the release dotnet-web-<version>-ime-<commit10>.
+# Build order follows ComplexRobot/godot-dotnet-web-export: glue -> assemblies -> web templates.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit to build (default: branch head)"
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+  # Emscripten 6.0.6 / 6.0.7 with LTO ran out of memory on the standard runner.
+  EMSDK_VERSION: "6.0.5"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.ref.outputs.sha }}
+      tag: ${{ steps.ref.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - id: ref
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=dotnet-web-${GODOT_VERSION}-ime-${sha::10}" >> "$GITHUB_OUTPUT"
+
+  # Linux C# editor: only needed to generate the C# glue (platform independent) and as the Linux editor.
+  editor-linux:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build editor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev libxi-dev libxrandr-dev libwayland-dev
+          python3 -m pip install --user scons
+          python3 -m SCons platform=linuxbsd arch=x86_64 target=editor module_mono_enabled=yes accesskit=no debug_symbols=no -j"$(nproc)"
+      - name: Generate C# glue
+        run: bin/godot.linuxbsd.editor.x86_64.mono --headless --quit --generate-mono-glue modules/mono/glue
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glue
+          path: modules/mono/glue/**
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor-linux
+          path: bin/godot.linuxbsd.editor.x86_64.mono
+
+  editor-windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build editor
+        run: |
+          pip install scons
+          scons platform=windows target=editor module_mono_enabled=yes d3d12=no accesskit=no angle=no optimize=speed debug_symbols=no
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor-windows
+          path: |
+            bin/godot.windows.editor.x86_64.mono.exe
+            bin/godot.windows.editor.x86_64.mono.console.exe
+
+  editor-macos:
+    needs: prepare
+    runs-on: macos-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Build editor
+        run: |
+          pip install scons
+          scons platform=macos arch=arm64 target=editor module_mono_enabled=yes vulkan=no accesskit=no angle=no optimize=speed lto=thin debug_symbols=no
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor-macos
+          path: bin/godot.macos.editor.arm64.mono
+
+  # Web templates must build on Linux (command line too long on Windows).
+  web-templates:
+    needs: [prepare, editor-linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: template_release
+            flags: optimize=speed lto=full
+          - target: template_debug
+            flags: optimize=speed lto=thin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet workload install wasm-tools
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: glue
+          path: modules/mono/glue
+      - name: Build C# assemblies and NuGet packages
+        run: |
+          pip install scons
+          python modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget
+      - name: Build web template
+        run: scons platform=web target=${{ matrix.target }} module_mono_enabled=yes ${{ matrix.flags }} ccflags="-DNDEBUG" linkflags="-sMALLOC=mimalloc"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ matrix.target }}
+          path: bin/godot.web.${{ matrix.target }}.wasm32.mono.zip
+      - uses: actions/upload-artifact@v4
+        if: matrix.target == 'template_release'
+        with:
+          name: csharp-assemblies
+          path: |
+            bin/GodotSharp/**
+            bin/nuget/**
+
+  package:
+    needs: [prepare, editor-linux, editor-windows, web-templates]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Assemble kits
+        run: |
+          kit=patches/dotnet-web-kit
+          common=common
+          mkdir -p "$common/nuget"
+          cp art/web-template_release/godot.web.template_release.wasm32.mono.zip "$common/web_release.zip"
+          cp art/web-template_debug/godot.web.template_debug.wasm32.mono.zip "$common/web_debug.zip"
+          cp art/csharp-assemblies/nuget/* "$common/nuget/"
+          cp "$kit"/Program.cs "$kit"/global.json "$kit"/README.txt "$kit"/install.sh "$kit"/install.bat "$common/"
+
+          name="godot-${GODOT_VERSION}-ime.dotnet-web"
+          # Windows
+          d="$name.windows-x86_64"; mkdir "$d"; cp -r "$common"/. "$d/"
+          cp art/editor-windows/*.exe "$d/"
+          cp -r art/csharp-assemblies/GodotSharp "$d/GodotSharp"
+          zip -qr -9 "$d.zip" "$d"
+          # Linux
+          d="$name.linux-x86_64"; mkdir "$d"; cp -r "$common"/. "$d/"
+          cp art/editor-linux/godot.linuxbsd.editor.x86_64.mono "$d/" && chmod +x "$d/godot.linuxbsd.editor.x86_64.mono"
+          cp -r art/csharp-assemblies/GodotSharp "$d/GodotSharp"
+          zip -qr -9 "$d.zip" "$d"
+          # shared parts for the macOS job
+          (cd "$common" && zip -qr -9 ../kit-common.zip .)
+          ls -la *.zip
+      - name: Create release and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ needs.prepare.outputs.tag }}"
+          gh release create "$tag" --target "${{ needs.prepare.outputs.sha }}" \
+            --title "C# web export kit ${GODOT_VERSION}-ime (${tag##*-})" \
+            --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net9.0, copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
+            godot-*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kit-common
+          path: kit-common.zip
+
+  package-macos:
+    needs: [prepare, editor-macos, package]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Assemble macOS kit
+        run: |
+          name="godot-${GODOT_VERSION}-ime.dotnet-web.macos-arm64"
+          mkdir "$name"
+          unzip -q art/kit-common/kit-common.zip -d "$name"
+          app="$name/Godot.app"
+          cp -R misc/dist/macos_tools.app "$app"
+          mkdir -p "$app/Contents/MacOS"
+          cp art/editor-macos/godot.macos.editor.arm64.mono "$app/Contents/MacOS/Godot"
+          chmod +x "$app/Contents/MacOS/Godot"
+          cp -R art/csharp-assemblies/GodotSharp "$app/Contents/Resources/GodotSharp"
+          codesign --force --deep --sign - "$app"
+          chmod +x "$name/install.sh"
+          ditto -c -k --keepParent "$name" "$name.zip"
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*.zip --clobber
