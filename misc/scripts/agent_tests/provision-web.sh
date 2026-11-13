@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 웹 도구 준비: Emscripten(~/emsdk), Playwright 브라우저(Chromium·WebKit). 이미 있으면 건너뜀
-# EMSDK_VERSION 기본 4.0.11 (GDScript 웹 템플릿 기준). C# 은 6.0.2 → EMSDK_VERSION=6.0.2
+# EMSDK_VERSION 기본 6.0.2 (GDScript·C# 웹 공통)
 set -euo pipefail
-ver="${EMSDK_VERSION:-4.0.11}"
+ver="${EMSDK_VERSION:-6.0.2}"
 # emsdk = Python 3.10+. 시스템 python 이 낮으면 brew python 사용 (sudo 불필요)
 if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
 	if command -v brew >/dev/null; then
