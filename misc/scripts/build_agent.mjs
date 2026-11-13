@@ -131,7 +131,13 @@ createServer(async (req, res) => {
 		};
 		saveMeta();
 		let code = await step("소스", () => sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"`, log, 600));
-		if (code === 0 && args) code = await step("빌드", () => sh(`${pre}${emsdk}scons ${args} -j${jobs}`, log, Number(process.env.BUILD_AGENT_BUILD_TIMEOUT || 7200)));
+		// 엔진 빌드 캐시(~/godot-cache/<platform>): 비어 있으면 릴리스에서 받고, cache_path 로 사용
+		// → 모듈 조합·정적 확장을 바꿔도 바뀐 부분만 컴파일 (misc/scripts/engine_cache.sh)
+		const platform = args.match(/platform=([a-z]+)/)?.[1];
+		const useCache = platform && !/cache_path=/.test(args) && process.env.BUILD_AGENT_NO_CACHE !== "1";
+		const cacheFetch = useCache ? `{ bash misc/scripts/engine_cache.sh fetch ${platform} || true; } && ` : "";
+		const cacheArg = useCache ? ` cache_path=${join(process.env.GODOT_CACHE_DIR || join(homedir(), "godot-cache"), platform)}` : "";
+		if (code === 0 && args) code = await step("빌드", () => sh(`${pre}${emsdk}${cacheFetch}scons ${args}${cacheArg} -j${jobs}`, log, Number(process.env.BUILD_AGENT_BUILD_TIMEOUT || 7200)));
 		const files = code === 0 && args
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
 			: [];
@@ -142,7 +148,7 @@ createServer(async (req, res) => {
 			if (code !== 0) break;
 			if (!existsSync(join(root, "misc", "scripts", "agent_tests", `${t}.sh`))) { log.write(`[agent] ✘ 검사 없음: ${t}\n`); code = 2; break; }
 			log.write(`\n[agent] ── 검사 ${t}\n`);
-			const c = await step(`검사 ${t}`, () => sh(`${pre}JOB_DIR="${dir}" ${testEnv} bash misc/scripts/agent_tests/${t}.sh`, log, Number(process.env.BUILD_AGENT_CHECK_TIMEOUT || 1800)));
+			const c = await step(`검사 ${t}`, () => sh(`${pre}${emsdk}JOB_DIR="${dir}" SCONS_ARGS="${args}" ${testEnv} bash misc/scripts/agent_tests/${t}.sh`, log, Number(process.env.BUILD_AGENT_CHECK_TIMEOUT || 1800)));
 			checks[t] = c === 0 ? "pass" : "fail";
 			if (c !== 0) code = c;
 		}
