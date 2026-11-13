@@ -20,6 +20,18 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!--
+    The WebAssembly SDK only treats the project as a browser-wasm app (IsBrowserWasmProject) when OutputType is
+    not Library, and only generates wasm_m2n_invoke.g.h, pinvoke-table.h and icall-table.h (included by the
+    runtime's runtime.c) when it builds natively. The .NET 11 SDK no longer does either on its own for this project.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
+    <WasmBuildNative>true</WasmBuildNative>
+  </PropertyGroup>
+
   <!-- Configuration for the Mono WASM runtime. Must match the features supported by the Godot build. -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
     <WasmEnableThreads>true</WasmEnableThreads>
