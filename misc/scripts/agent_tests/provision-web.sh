@@ -23,7 +23,7 @@ mkdir -p "$dir" && cd "$dir"
 npx -y playwright install chromium webkit >/dev/null
 # 브라우저 실행 확인 (리눅스 시스템 라이브러리 누락 시 sudo npx playwright install-deps 필요)
 for b in chromium webkit; do
-	if node -e "require('playwright')['$b'].launch().then(b=>b.close()).catch(e=>{console.error(String(e).split('\n').slice(0,3).join(' | '));process.exit(1)})"; then echo "$b: 실행 OK"
+	if node -e "setTimeout(()=>{console.error('60초 안에 안 뜸');process.exit(1)},60000).unref();require('playwright')['$b'].launch().then(b=>b.close()).then(()=>process.exit(0)).catch(e=>{console.error(String(e).split('\n').slice(0,3).join(' | '));process.exit(1)})"; then echo "$b: 실행 OK"
 	else echo "$b: 실행 실패 → (리눅스) sudo npx --prefix $dir playwright install-deps $b"; fi
 done
 echo "playwright: $(npx playwright --version)"

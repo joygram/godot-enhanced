@@ -45,6 +45,13 @@ async function download(result) {
 	if (result.release) console.log(`[remote-build] 릴리스 업로드: ${result.release}`);
 }
 
+// 상태·취소
+if (rest[0] === "--status" || rest[0] === "--cancel") {
+	const r = await fetch(`${base}/${rest[0].slice(2)}`, { method: rest[0] === "--cancel" ? "POST" : "GET", headers: auth });
+	console.log(`[remote-build] ${host}: ${await r.text()}`);
+	process.exit(0);
+}
+
 // 끊긴 빌드 이어 받기
 if (rest[0] === "--resume") {
 	const job = rest[1];
