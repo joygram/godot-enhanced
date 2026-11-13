@@ -179,6 +179,8 @@ env.CommandNoCache(
     env.Value(methods.get_version_info(env.module_version_string)),
     env.Run(core_builders.version_info_builder),
 )
+# godot-enhanced: build name comes from ENHANCED_VERSION; a Value node alone can be skipped by MD5-timestamp.
+env.Depends("version_generated.gen.h", "#ENHANCED_VERSION")
 
 # Generate version hash
 gen_hash = env.CommandNoCache(

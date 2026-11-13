@@ -12,6 +12,8 @@ case "$ver" in *"$want"*) ;; *) echo "✘ 버전에 $want 없음"; exit 1 ;; esa
 proj=$(mktemp -d)
 printf 'config_version=5\n[application]\nconfig/name="smoke"\n' > "$proj/project.godot"
 log=$("$bin" --headless --path "$proj" --editor --quit 2>&1 || true)
+# 업스트림 소음 제외: headless 에디터 즉시 종료 시 EditorNode 생성 전 is_cmdline_mode 호출 (간헐)
+log=$(echo "$log" | grep -v -A1 'Parameter "singleton" is null' | grep -v 'is_cmdline_mode (editor/editor_node.cpp' || true)
 rm -rf "$proj"
 if echo "$log" | grep -E -A2 '^(ERROR|SCRIPT ERROR)' ; then echo "✘ 에디터 오류"; exit 1; fi
 echo "✔ smoke-editor 통과"
