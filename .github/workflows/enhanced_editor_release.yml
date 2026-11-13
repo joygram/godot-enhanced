@@ -1,20 +1,24 @@
-name: 🧰 Editor release (patched)
+name: 🧰 Desktop release (editor + export templates)
 
-# Builds the patched Godot editor for macOS (universal) and Linux and attaches the zips
-# to the release editor-<godot version>-<ENHANCED_VERSION>. Windows x86_64 is built locally (MSVC).
-# Asset layout matches a SCons bin/ folder: godot.<platform>.editor.<arch>[.exe] or Godot.app.
+# Builds the patched editor and export templates for Windows, Linux (x86_64, arm64) and macOS (universal),
+# publishes them on the release editor-<godot>-<ENHANCED_VERSION>, then downloads them back from the release
+# and runs each editor on its own OS/arch (verify job).
+# Assets:
+#   godot-<ver>-enhanced.<platform>.editor.<arch>.zip      editor (macOS: Godot.app, universal)
+#   godot-<ver>-enhanced.export_templates.tpz              Editor → Manage Export Templates → Install from file
 on:
   workflow_dispatch:
     inputs:
       ref:
         description: "Commit to build (default: branch head)"
         default: ""
-      platforms:
-        description: "Platforms to build (comma separated: macos,linux)"
-        default: "macos,linux"
 
 permissions:
   contents: write
+
+env:
+  # Same options on every platform: no SDKs that a stock runner lacks.
+  COMMON_FLAGS: accesskit=no debug_symbols=no
 
 jobs:
   prepare:
@@ -23,78 +27,172 @@ jobs:
       sha: ${{ steps.ref.outputs.sha }}
       tag: ${{ steps.ref.outputs.tag }}
       version: ${{ steps.ref.outputs.version }}
+      template_dir: ${{ steps.ref.outputs.template_dir }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
       - id: ref
         run: |
-          sha=$(git rev-parse HEAD)
-          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")-$(tr -d '[:space:]' < ENHANCED_VERSION)
-          echo "GODOT_VERSION=$GODOT_VERSION" >> "$GITHUB_ENV"
-          echo "version=$GODOT_VERSION" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=editor-${GODOT_VERSION}" >> "$GITHUB_OUTPUT"
+          godot=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")
+          version="$godot-$(tr -d '[:space:]' < ENHANCED_VERSION)"
+          # Export templates folder name the editor looks for (version.txt): <major>.<minor>.<patch>.<status>
+          template_dir=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}.{v.status}')")
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=editor-$version" >> "$GITHUB_OUTPUT"
+          echo "template_dir=$template_dir" >> "$GITHUB_OUTPUT"
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.ref.outputs.tag }}"
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "${{ steps.ref.outputs.sha }}" \
-            --title "Godot ${GODOT_VERSION} editor (godot-enhanced)" --notes "Patched Godot ${GODOT_VERSION} editor builds."
+            --title "Godot ${{ steps.ref.outputs.version }} (godot-enhanced)" \
+            --notes "Patched Godot editor and export templates: Windows / Linux (x86_64, arm64), macOS (universal)."
 
-  macos:
+  build:
     needs: prepare
-    env:
-      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
-    if: contains(inputs.platforms || 'macos,linux', 'macos')
-    runs-on: macos-latest
-    timeout-minutes: 180
+    name: ${{ matrix.platform }} ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: windows, arch: x86_64, runner: windows-latest, flags: "d3d12=no" }
+          - { platform: windows, arch: arm64, runner: windows-latest, flags: "d3d12=no" }
+          - { platform: linuxbsd, arch: x86_64, runner: ubuntu-22.04, flags: "" }
+          - { platform: linuxbsd, arch: arm64, runner: ubuntu-24.04-arm, flags: "" }
+          - { platform: macos, arch: x86_64, runner: macos-latest, flags: "vulkan=no angle=no" }
+          - { platform: macos, arch: arm64, runner: macos-latest, flags: "vulkan=no angle=no" }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare.outputs.sha }}
-      - name: Build universal editor
-        run: |
-          pip3 install --break-system-packages scons || pip3 install scons
-          flags="target=editor accesskit=no angle=no vulkan=no debug_symbols=no -j$(sysctl -n hw.ncpu)"
-          scons platform=macos arch=x86_64 $flags
-          scons platform=macos arch=arm64 generate_bundle=yes $flags
-      - name: Package
-        run: |
-          mkdir pkg
-          app=$(ls -d bin/*.app | head -1)
-          cp -R "$app" pkg/Godot.app
-          (cd pkg && ditto -c -k --keepParent Godot.app "../godot-${GODOT_VERSION}-enhanced.macos.editor.arm64.zip")
-          cp "godot-${GODOT_VERSION}-enhanced.macos.editor.arm64.zip" "godot-${GODOT_VERSION}-enhanced.macos.editor.x86_64.zip"
-      - name: Upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*-enhanced.macos.editor.*.zip --clobber
-
-  linux:
-    needs: prepare
-    env:
-      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
-    if: contains(inputs.platforms || 'macos,linux', 'linux')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          ref: ${{ needs.prepare.outputs.sha }}
-      - name: Build editor
+          python-version: "3.12"
+      - name: Install SCons
+        run: python -m pip install scons==4.11.1
+      - name: Linux dependencies
+        if: matrix.platform == 'linuxbsd'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev \
             libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev libxi-dev libxrandr-dev libwayland-dev
-          python3 -m pip install --user scons
-          python3 -m SCons platform=linuxbsd arch=x86_64 target=editor accesskit=no debug_symbols=no -j"$(nproc)"
-      - name: Package and upload
+      - name: Build editor and templates
+        shell: bash
+        run: |
+          jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+          for target in editor template_release template_debug; do
+            python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=$target \
+              $COMMON_FLAGS ${{ matrix.flags }} -j"$jobs"
+          done
+          ls -la bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            bin/godot.*
+            !bin/*.lib
+            !bin/*.exp
+            !bin/*.pdb
+          if-no-files-found: error
+
+  package:
+    needs: [prepare, build]
+    runs-on: macos-latest # lipo + ditto for the universal macOS bundles
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TEMPLATE_DIR: ${{ needs.prepare.outputs.template_dir }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: bin
+          merge-multiple: true
+      - name: Package editors and export templates
+        run: |
+          set -euo pipefail
+          chmod +x bin/godot.* || true
+          mkdir -p out tpz/templates
+          b=bin
+          # Editors
+          for arch in x86_64 arm64; do
+            (cd $b && zip -q -9 "../out/godot-$VERSION-enhanced.windows.editor.$arch.zip" godot.windows.editor.$arch.exe godot.windows.editor.$arch.console.exe)
+            (cd $b && zip -q -9 "../out/godot-$VERSION-enhanced.linuxbsd.editor.$arch.zip" godot.linuxbsd.editor.$arch)
+          done
+          # macOS editor: universal binary in Godot.app
+          cp -R misc/dist/macos_tools.app Godot.app
+          mkdir -p Godot.app/Contents/MacOS
+          lipo -create $b/godot.macos.editor.x86_64 $b/godot.macos.editor.arm64 -output Godot.app/Contents/MacOS/Godot
+          chmod +x Godot.app/Contents/MacOS/Godot
+          codesign --force --deep -s - Godot.app
+          ditto -c -k --keepParent Godot.app "out/godot-$VERSION-enhanced.macos.editor.universal.zip"
+
+          # Export templates (official names)
+          t=tpz/templates
+          for arch in x86_64 arm64; do
+            for kind in release debug; do
+              cp $b/godot.windows.template_$kind.$arch.exe $t/windows_${kind}_$arch.exe
+              cp $b/godot.windows.template_$kind.$arch.console.exe $t/windows_${kind}_${arch}_console.exe
+              cp $b/godot.linuxbsd.template_$kind.$arch $t/linux_$kind.$arch
+            done
+          done
+          cp -R misc/dist/macos_template.app macos_template.app
+          mkdir -p macos_template.app/Contents/MacOS
+          for kind in release debug; do
+            lipo -create $b/godot.macos.template_$kind.x86_64 $b/godot.macos.template_$kind.arm64 \
+              -output macos_template.app/Contents/MacOS/godot_macos_$kind.universal
+          done
+          chmod +x macos_template.app/Contents/MacOS/*
+          zip -q -9 -r $t/macos.zip macos_template.app
+          echo "$TEMPLATE_DIR" > $t/version.txt
+          (cd tpz && zip -q -9 -r "../out/godot-$VERSION-enhanced.export_templates.tpz" templates)
+          ls -la out
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" out/* --clobber
+
+  verify:
+    # Download from the release (not the artifacts) and run the editor on each OS/arch.
+    needs: [prepare, package]
+    name: verify ${{ matrix.platform }} ${{ matrix.arch }} (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: windows, arch: x86_64, runner: windows-latest }
+          - { platform: windows, arch: arm64, runner: windows-11-arm }
+          - { platform: linuxbsd, arch: x86_64, runner: ubuntu-22.04 }
+          - { platform: linuxbsd, arch: arm64, runner: ubuntu-24.04-arm }
+          - { platform: macos, arch: universal, runner: macos-latest }
+          - { platform: macos, arch: universal, runner: macos-13 }
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Download from release and run
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd bin
-          zip -9 "../godot-${GODOT_VERSION}-enhanced.linuxbsd.editor.x86_64.zip" godot.linuxbsd.editor.x86_64
-          cd ..
-          gh release upload "${{ needs.prepare.outputs.tag }}" "godot-${GODOT_VERSION}-enhanced.linuxbsd.editor.x86_64.zip" --clobber
+          set -euo pipefail
+          enh=$(echo "$VERSION" | cut -d- -f2)
+          asset="godot-$VERSION-enhanced.${{ matrix.platform }}.editor.${{ matrix.arch }}.zip"
+          gh release download "${{ needs.prepare.outputs.tag }}" -R "$GITHUB_REPOSITORY" -p "$asset" -p "godot-$VERSION-enhanced.export_templates.tpz"
+          unzip -q "$asset"
+          case "${{ matrix.platform }}" in
+            windows) exe="./godot.windows.editor.${{ matrix.arch }}.console.exe" ;;
+            linuxbsd) exe="./godot.linuxbsd.editor.${{ matrix.arch }}"; chmod +x "$exe" ;;
+            macos) exe="./Godot.app/Contents/MacOS/Godot" ;;
+          esac
+          out=$("$exe" --headless --version)
+          echo "$out"
+          echo "$out" | grep -q "enhanced-$enh" || { echo "::error::version does not contain enhanced-$enh"; exit 1; }
+          # Export templates archive: required files present
+          unzip -l "godot-$VERSION-enhanced.export_templates.tpz" | grep -E "version.txt|macos.zip|linux_release.arm64|windows_release_arm64.exe"
