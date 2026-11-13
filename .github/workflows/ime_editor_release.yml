@@ -9,6 +9,9 @@ on:
       ref:
         description: "Commit to build (default: branch head)"
         default: ""
+      platforms:
+        description: "Platforms to build (comma separated: macos,linux)"
+        default: "macos,linux"
 
 permissions:
   contents: write
@@ -41,6 +44,7 @@ jobs:
 
   macos:
     needs: prepare
+    if: contains(inputs.platforms || 'macos,linux', 'macos')
     runs-on: macos-latest
     timeout-minutes: 180
     steps:
@@ -67,6 +71,7 @@ jobs:
 
   linux:
     needs: prepare
+    if: contains(inputs.platforms || 'macos,linux', 'linux')
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
