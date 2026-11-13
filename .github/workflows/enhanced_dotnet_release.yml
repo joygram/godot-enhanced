@@ -16,7 +16,6 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: "4.7.2"
   # Same Emscripten as the .NET 11 Mono runtime pack (dotnet/runtime release/11.0: 6.0.2).
   EMSDK_VERSION: "6.0.2"
 
@@ -26,6 +25,7 @@ jobs:
     outputs:
       sha: ${{ steps.ref.outputs.sha }}
       tag: ${{ steps.ref.outputs.tag }}
+      version: ${{ steps.ref.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,12 +33,16 @@ jobs:
       - id: ref
         run: |
           sha=$(git rev-parse HEAD)
+          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")
+          echo "version=$GODOT_VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "tag=dotnet-web-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
 
   # Linux C# editor: only needed to generate the C# glue (platform independent) and as the Linux editor.
   editor-linux:
     needs: prepare
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: ubuntu-22.04
     timeout-minutes: 150
     steps:
@@ -68,6 +72,8 @@ jobs:
 
   editor-windows:
     needs: prepare
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: windows-latest
     timeout-minutes: 150
     steps:
@@ -93,6 +99,8 @@ jobs:
 
   editor-macos:
     needs: prepare
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: macos-latest
     timeout-minutes: 150
     steps:
@@ -117,6 +125,8 @@ jobs:
   # Web templates must build on Linux (command line too long on Windows).
   web-templates:
     needs: [prepare, editor-linux]
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
@@ -171,6 +181,8 @@ jobs:
 
   package:
     needs: [prepare, editor-linux, editor-windows, web-templates]
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -219,6 +231,8 @@ jobs:
 
   package-macos:
     needs: [prepare, editor-macos, package]
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

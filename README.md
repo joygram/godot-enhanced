@@ -12,8 +12,9 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 ## Branches
 
-- `4.7.2-enhanced` (default): `4.7.2-stable` (`ed1daf0bf`) + patches. One commit per patch.
-- `master`: mirror of upstream `master`, untouched.
+- `main` (default): latest supported Godot version (now `4.7.2-stable`, `ed1daf0bf`) + patches. One commit per patch.
+- Version branches (e.g. `4.7`) are cut from `main` only when an older version still needs fixes.
+- Upstream Godot: add `https://github.com/godotengine/godot.git` as a remote.
 - Upstream tags kept (`4.7.2-stable`, …).
 
 ## Use
@@ -21,7 +22,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 Build this branch:
 
 ```sh
-git clone --branch 4.7.2-enhanced --depth 1 https://github.com/joygram/godot-enhanced.git
+git clone --branch main --depth 1 https://github.com/joygram/godot-enhanced.git
 cd godot-enhanced
 # Windows editor (MSVC)
 python -m SCons platform=windows target=editor arch=x86_64
@@ -61,7 +62,7 @@ Apply all three (as above), or only the ones you need — each patch also applie
 git remote add upstream https://github.com/godotengine/godot.git
 git fetch upstream --tags
 git checkout -b <new-version>-enhanced <new-version>-stable
-git cherry-pick 4.7.2-stable..origin/4.7.2-enhanced
+git cherry-pick 4.7.2-stable..origin/main
 ```
 
 ## Status
@@ -90,8 +91,9 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 
 ### 브랜치
 
-- `4.7.2-enhanced` (기본 브랜치): `4.7.2-stable`(`ed1daf0bf`) 위에 패치를 하나씩 커밋으로 올렸습니다.
-- `master`: 업스트림 `master`를 그대로 옮겨 온 미러입니다.
+- `main` (기본 브랜치): 지원하는 최신 Godot 버전(현재 `4.7.2-stable`, `ed1daf0bf`) 위에 패치를 하나씩 커밋으로 올렸습니다.
+- 버전 브랜치(예: `4.7`)는 이전 버전을 계속 고쳐야 할 때만 `main`에서 따로 만듭니다.
+- 업스트림 Godot은 `https://github.com/godotengine/godot.git`을 원격으로 추가해서 받습니다.
 - 업스트림 태그(`4.7.2-stable` 등)도 그대로 있습니다.
 
 ### 사용법
@@ -99,7 +101,7 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 이 브랜치를 바로 빌드하면 됩니다.
 
 ```sh
-git clone --branch 4.7.2-enhanced --depth 1 https://github.com/joygram/godot-enhanced.git
+git clone --branch main --depth 1 https://github.com/joygram/godot-enhanced.git
 cd godot-enhanced
 # Windows 편집기 (MSVC)
 python -m SCons platform=windows target=editor arch=x86_64
@@ -139,7 +141,7 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 git remote add upstream https://github.com/godotengine/godot.git
 git fetch upstream --tags
 git checkout -b <새 버전>-enhanced <새 버전>-stable
-git cherry-pick 4.7.2-stable..origin/4.7.2-enhanced
+git cherry-pick 4.7.2-stable..origin/main
 ```
 
 ### 상태

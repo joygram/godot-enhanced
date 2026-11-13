@@ -16,15 +16,13 @@ on:
 permissions:
   contents: write
 
-env:
-  GODOT_VERSION: "4.7.2"
-
 jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.ref.outputs.sha }}
       tag: ${{ steps.ref.outputs.tag }}
+      version: ${{ steps.ref.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +30,9 @@ jobs:
       - id: ref
         run: |
           sha=$(git rev-parse HEAD)
+          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")
+          echo "GODOT_VERSION=$GODOT_VERSION" >> "$GITHUB_ENV"
+          echo "version=$GODOT_VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "tag=editor-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
       - name: Ensure release exists
@@ -44,6 +45,8 @@ jobs:
 
   macos:
     needs: prepare
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     if: contains(inputs.platforms || 'macos,linux', 'macos')
     runs-on: macos-latest
     timeout-minutes: 180
@@ -71,6 +74,8 @@ jobs:
 
   linux:
     needs: prepare
+    env:
+      GODOT_VERSION: ${{ needs.prepare.outputs.version }}
     if: contains(inputs.platforms || 'macos,linux', 'linux')
     runs-on: ubuntu-22.04
     timeout-minutes: 120
