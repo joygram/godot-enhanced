@@ -51,7 +51,7 @@ if (via === "local") {
 		.map((f) => join(root, "bin", f))
 		.filter((p) => statSync(p).isFile() && statSync(p).mtimeMs > started && /\.(zip|exe|app|x86_64|arm64)$|\.editor\./.test(p) && !/\.(lib|exp|pdb)$/.test(p));
 } else {
-	run(process.execPath, [join("misc", "scripts", "remote_build.mjs"), via, ...sconsArgs]);
+	run(process.execPath, [join("misc", "scripts", "remote_build.mjs"), via, ...sconsArgs, "--wait"]);
 	const dir = join(root, "bin", "remote", via);
 	files = readdirSync(dir).map((f) => join(dir, f)).filter((p) => statSync(p).isFile() && statSync(p).mtimeMs > Date.now() - 6 * 3600e3);
 }

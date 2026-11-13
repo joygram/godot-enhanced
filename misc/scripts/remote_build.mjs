@@ -101,6 +101,7 @@ if (!pushed) {
 }
 // --test a,b (misc/scripts/agent_tests/<이름>.sh), --release <kind> (검사 통과 시 에이전트가 GitHub 릴리스 업로드)
 const opt = (name) => { const i = rest.indexOf(name); if (i < 0) return ""; const v = rest[i + 1] ?? ""; rest.splice(i, 2); return v; };
+const waitAll = rest.includes("--wait") && (rest.splice(rest.indexOf("--wait"), 1), true);
 const test = opt("--test");
 const release = opt("--release");
 const sconsArgs = rest;
@@ -124,6 +125,11 @@ try {
 			writeFileSync(logFile, "");
 		}
 		if (logFile) appendFileSync(logFile, text);
+		// 기본 = 작업 번호만 받고 바로 반환 (에이전트는 계속). --wait 면 끝까지 따라감
+		if (job && !waitAll) {
+			console.log(`[remote-build] 보냄: ${host} job ${job} — 진행: --follow ${job} | 상태: --status | 취소: --cancel`);
+			process.exit(0);
+		}
 		process.stdout.write(text.replace(/\n@@FILES .*\n?$/s, ""));
 	}
 } catch { /* 연결 끊김 */ }
