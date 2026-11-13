@@ -59,7 +59,7 @@ const when=t=>t?new Date(t).toLocaleTimeString("ko-KR",{hour12:false}):"";const 
 const logs={};
 async function load(){const s=await (await fetch("/api/state")).json();document.getElementById("t").textContent="갱신 "+when(Date.now());
 const m=document.getElementById("m");for(const r of s){let c=document.getElementById("c-"+r.host);if(!c){c=document.createElement("section");c.className="card";c.id="c-"+r.host;m.append(c)}
-const busy=r.online&&r.status.startsWith("busy");const cur=(r.jobs||[]).find(j=>j.status==="running");const pick=sel[r.host]||cur?.job||r.jobs?.[0]?.job;
+const busy=r.online&&r.status.startsWith("busy");const cur=(r.jobs||[]).find(j=>j.status==="running");const pick=sel[r.host]||cur?.job||(busy?r.status.split(" ")[1]:null)||r.jobs?.[0]?.job;
 const job=(r.jobs||[]).find(j=>j.job===pick);const i=r.info;
 c.innerHTML=\`<div class="head"><span class="dot \${!r.online?"off":busy?"busy":"idle"}"></span><span class="host">\${esc(r.host)}</span>
 <span class="mut">\${!r.online?"연결 안 됨 ("+esc(r.error)+")":busy?"작업 중":"대기"}</span>\${busy?\`<button onclick="cancelJob('\${r.host}')">취소</button>\`:""}</div>
