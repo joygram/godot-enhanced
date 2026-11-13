@@ -106,24 +106,27 @@ EOF
 	launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
 	launchctl bootstrap "gui/$(id -u)" "$PLIST"
 else
-	UNIT="$HOME/.config/systemd/user/godot-enhanced-build-agent.service"
-	mkdir -p "$(dirname "$UNIT")"
-	cat > "$UNIT" <<EOF
+	# 시스템 서비스 (사용자 systemd 는 SSH·데스크톱 밖 세션에서 안 뜨는 경우 있음)
+	UNIT="/etc/systemd/system/godot-enhanced-build-agent.service"
+	sudo tee "$UNIT" >/dev/null <<EOF
 [Unit]
 Description=godot-enhanced build agent
-After=network-online.target
+After=network-online.target tailscaled.service
+Wants=network-online.target
 [Service]
+User=$USER
 ExecStart=$RUNNER
 Restart=always
+RestartSec=5
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 EOF
-	systemctl --user daemon-reload
-	systemctl --user enable --now godot-enhanced-build-agent.service
-	loginctl enable-linger "$USER" 2>/dev/null || sudo loginctl enable-linger "$USER" || true
+	sudo systemctl daemon-reload
+	sudo systemctl enable godot-enhanced-build-agent.service
+	sudo systemctl restart godot-enhanced-build-agent.service
 fi
 
 say "완료 — 에이전트 $BIND:$PORT"
 echo "Windows 쪽 설정:  setx BUILD_AGENT_TOKEN $TOKEN"
 echo "빌드 신호 예:     node misc/scripts/remote_build.mjs $(hostname -s) platform=$([ "$OS" = Darwin ] && echo macos || echo linuxbsd) target=editor"
-echo "로그: $([ "$OS" = Darwin ] && echo "$CONF_DIR/agent.log" || echo "journalctl --user -u godot-enhanced-build-agent -f")"
+echo "로그: $([ "$OS" = Darwin ] && echo "$CONF_DIR/agent.log" || echo "journalctl -u godot-enhanced-build-agent -f")"
