@@ -21,6 +21,9 @@ if (!existsSync(join(web, "index.html"))) { console.error(`✘ ${web}/index.html
 // 페이지에 넣는 측정 훅: WebAssembly.Memory 수집 + 콘솔·오류 기록 (모든 브라우저 공통)
 const HOOK = `<script>(()=>{if(globalThis.__mems)return;const M=WebAssembly.Memory;globalThis.__mems=[];
 WebAssembly.Memory=function(d){const m=new M(d);globalThis.__mems.push(m);return m};WebAssembly.Memory.prototype=M.prototype;
+const grab=r=>{const i=r&&(r.instance||r);if(i&&i.exports)for(const v of Object.values(i.exports))if(v instanceof M&&!globalThis.__mems.includes(v))globalThis.__mems.push(v);return r};
+for(const k of["instantiate","instantiateStreaming"]){const f=WebAssembly[k];if(f)WebAssembly[k]=(...a)=>f.apply(WebAssembly,a).then(grab)}
+const I=WebAssembly.Instance;WebAssembly.Instance=function(m,imp){return grab(new I(m,imp))};WebAssembly.Instance.prototype=I.prototype;
 const L=globalThis.__logs=[];for(const k of["log","warn","error"]){const o=console[k].bind(console);console[k]=(...a)=>{L.push(a.join(" "));o(...a)}}
 addEventListener("error",e=>L.push("EXC "+(e.message||e.error)));addEventListener("unhandledrejection",e=>L.push("EXC "+e.reason));})();</script>`;
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm" };
