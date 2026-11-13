@@ -3,6 +3,6 @@
 # 환경: WITH_EMSDK, WITH_DOTNET, EMSDK_VERSION 그대로 전달
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-SKIP_SERVICE=1 WITH_EMSDK="${WITH_EMSDK:-1}" WITH_DOTNET="${WITH_DOTNET:-0}" bash misc/scripts/setup_build_agent.sh
+SKIP_SERVICE=1 bash misc/scripts/setup_build_agent.sh
 touch "$JOB_DIR/.restart"
 echo "✔ self-setup 완료 → 에이전트 재시작"

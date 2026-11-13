@@ -7,8 +7,8 @@
 # 선택 환경 변수:
 #   BUILD_AGENT_TOKEN  공유 토큰 (없으면 기존 값 → 없으면 생성)
 #   REPO_DIR           소스 위치 (기본 ~/workspace/godot-enhanced)
-#   WITH_EMSDK=1       웹 템플릿용 Emscripten (EMSDK_VERSION 기본 6.0.2, GDScript·C# 공통)
-#   WITH_DOTNET=1      C# 빌드용 .NET 11 SDK + wasm-tools
+#   (기본으로 전부 설치: Emscripten 6.0.2, .NET 11 + wasm-tools, 웹 측정 도구)
+#   WITH_EMSDK=0 / WITH_DOTNET=0  해당 도구 빼기
 #   BUILD_AGENT_PORT   기본 8790
 #   SKIP_SERVICE=1     서비스 등록 건너뜀 (에이전트가 스스로 재설치할 때)
 set -euo pipefail
@@ -52,18 +52,23 @@ cd "$REPO_DIR"
 "$MISE" exec -- scons --version | head -2 | tail -1
 
 # 5) 선택: Emscripten / .NET (사용자 영역)
-if [ "${WITH_EMSDK:-0}" = "1" ]; then
+if [ "${WITH_EMSDK:-1}" = "1" ]; then
 	say "Emscripten $EMSDK_VERSION"
 	[ -d "$HOME/emsdk" ] || git clone -q https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
 	"$MISE" exec -- "$HOME/emsdk/emsdk" install "$EMSDK_VERSION"
 	"$MISE" exec -- "$HOME/emsdk/emsdk" activate "$EMSDK_VERSION"
 fi
-if [ "${WITH_DOTNET:-0}" = "1" ]; then
-	say ".NET 11 SDK + wasm-tools"
-	curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$CONF_DIR/dotnet-install.sh" 2>/dev/null || { mkdir -p "$CONF_DIR"; curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$CONF_DIR/dotnet-install.sh"; }
+if [ "${WITH_DOTNET:-1}" = "1" ]; then
+	say ".NET 11 SDK + wasm-tools (~/.dotnet)"
+	mkdir -p "$CONF_DIR"
+	curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$CONF_DIR/dotnet-install.sh"
 	bash "$CONF_DIR/dotnet-install.sh" --channel 11.0 --install-dir "$HOME/.dotnet"
-	"$HOME/.dotnet/dotnet" workload install wasm-tools
+	DOTNET_ROOT="$HOME/.dotnet" "$HOME/.dotnet/dotnet" workload install wasm-tools
+	"$HOME/.dotnet/dotnet" --version
 fi
+# 웹 측정 도구 (맥 = 시스템 Safari·Chrome 확인, 리눅스 = Playwright Chromium)
+say "웹 측정 도구"
+"$MISE" exec -- bash "$REPO_DIR/misc/scripts/agent_tests/provision-web.sh"
 
 # 6) 토큰·설정
 TOKEN="${BUILD_AGENT_TOKEN:-}"
