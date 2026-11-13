@@ -3,17 +3,20 @@
 // 사용: node misc/scripts/remote_build.mjs <host> <scons 인자...>
 //       node misc/scripts/remote_build.mjs <host> --resume <job>   (연결이 끊긴 빌드의 결과 받기)
 //   예) node misc/scripts/remote_build.mjs 100.94.13.67 platform=macos target=editor arch=arm64
-// 환경: BUILD_AGENT_TOKEN (필수), BUILD_AGENT_PORT (기본 8790)
+// 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"}, 없으면 BUILD_AGENT_TOKEN. 포트: BUILD_AGENT_PORT (기본 8790)
 // 산출물: bin/remote/<host>/
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const [host, ...rest] = process.argv.slice(2);
-const token = process.env.BUILD_AGENT_TOKEN;
+// 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"} → 없으면 BUILD_AGENT_TOKEN
+const agentsFile = join(homedir(), ".config", "godot-enhanced", "agents.json");
+const agents = existsSync(agentsFile) ? JSON.parse(readFileSync(agentsFile, "utf8")) : {};
+const token = agents[host] || process.env.BUILD_AGENT_TOKEN;
 if (!host || rest.length === 0 || !token) {
 	console.error("사용: BUILD_AGENT_TOKEN=<토큰> node misc/scripts/remote_build.mjs <host> <scons 인자...> | --resume <job>");
 	process.exit(2);
