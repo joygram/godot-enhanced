@@ -13,5 +13,5 @@ proj=$(mktemp -d)
 printf 'config_version=5\n[application]\nconfig/name="smoke"\n' > "$proj/project.godot"
 log=$("$bin" --headless --path "$proj" --editor --quit 2>&1 || true)
 rm -rf "$proj"
-if echo "$log" | grep -E '^(ERROR|SCRIPT ERROR)' ; then echo "✘ 에디터 오류"; exit 1; fi
+if echo "$log" | grep -E -A2 '^(ERROR|SCRIPT ERROR)' ; then echo "✘ 에디터 오류"; exit 1; fi
 echo "✔ smoke-editor 통과"
