@@ -1,7 +1,7 @@
 name: 🧰 Editor release (patched)
 
 # Builds the patched Godot editor for macOS (universal) and Linux and attaches the zips
-# to the release editor-<version>-enhanced-<commit10>. Windows x86_64 is built locally (MSVC).
+# to the release editor-<godot version>-<ENHANCED_VERSION>. Windows x86_64 is built locally (MSVC).
 # Asset layout matches a SCons bin/ folder: godot.<platform>.editor.<arch>[.exe] or Godot.app.
 on:
   workflow_dispatch:
@@ -30,18 +30,18 @@ jobs:
       - id: ref
         run: |
           sha=$(git rev-parse HEAD)
-          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")
+          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")-$(tr -d '[:space:]' < ENHANCED_VERSION)
           echo "GODOT_VERSION=$GODOT_VERSION" >> "$GITHUB_ENV"
           echo "version=$GODOT_VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=editor-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
+          echo "tag=editor-${GODOT_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.ref.outputs.tag }}"
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "${{ steps.ref.outputs.sha }}" \
-            --title "Godot ${GODOT_VERSION}-enhanced editor (${tag##*-})" --notes "Patched Godot ${GODOT_VERSION} editor builds."
+            --title "Godot ${GODOT_VERSION} editor (godot-enhanced)" --notes "Patched Godot ${GODOT_VERSION} editor builds."
 
   macos:
     needs: prepare

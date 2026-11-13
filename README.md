@@ -2,6 +2,30 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; three patches on top.
 
+## 🚀 0.1.1 — C# on the web, and it's light
+
+> Official Godot 4 **cannot** export C# to the web. godot-enhanced does — then cuts it down hard.
+
+| C# web build (real game, .NET 11) | Before | **0.1.1** | |
+|---|---|---|---|
+| Download (`.pck`) | 64.0 MB | **10.7 MB** | **−83%** |
+| WASM heap after boot | 160.1 MB | **95.8 MB** | **−40%** |
+| Empty C# project, WASM heap | 154.1 MB | **79.8 MB** | **−48%** |
+| Managed (.NET) heap under load | 4.3 MB | **1.3 MB** | **−70%** |
+| Errors in browser | 0 | **0** | save/load verified |
+
+- **PCK diet**: unused `.a`, ICU data, build metadata dropped → 64 → 30 MB
+- **Zero-copy assembly load**: `need_copy=false`, no permanent copy peak → heap 160 → 115 MB
+- **IL trimming**: unused framework code removed; game + `GodotSharp` kept → 30 → 10.7 MB
+- **Web-tuned GC**: 1 MB SGen nursery → shorter minor GCs. Override: `MONO_GC_PARAMS`
+- **.NET 11** runtime pack, Emscripten 6.0.2
+- Also: Windows Hangul IME fix, GDScript parser memory release
+
+- Measured: Windows, headless Chrome, debug = release
+- Reference: official Godot empty GDScript web = 55.4 MB WASM heap
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.1`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.1`
+
 **Keywords:** Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, Windows IME composition, CJK input, LineEdit / TextEdit caret, Godot web export memory, WASM heap, GDScript parser memory, HTML5 export out of memory, Godot C# web export, Godot .NET web export, C# WebAssembly, Mono WASM, Godot mono HTML5.
 
 | Patch | Platform | Fixes |
@@ -82,6 +106,29 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🚀 0.1.1 — C#이 웹에서 돌아가고, 가볍다
+
+> 공식 Godot 4는 C#을 웹으로 **못 내보냅니다.** godot-enhanced는 내보내고, 확 줄였습니다.
+
+| C# 웹 빌드 (실제 게임, .NET 11) | 이전 | **0.1.1** | |
+|---|---|---|---|
+| 다운로드 (`.pck`) | 64.0 MB | **10.7 MB** | **−83%** |
+| 부팅 후 WASM 힙 | 160.1 MB | **95.8 MB** | **−40%** |
+| 빈 C# 프로젝트 WASM 힙 | 154.1 MB | **79.8 MB** | **−48%** |
+| 부하 중 .NET 관리 힙 | 4.3 MB | **1.3 MB** | **−70%** |
+| 브라우저 오류 | 0 | **0** | 저장·불러오기 확인 |
+
+- **pck 다이어트**: 런타임에 안 쓰는 `.a`·ICU 데이터·빌드 메타데이터 제외 → 64 → 30 MB
+- **어셈블리 무복사 로드**: `need_copy=false`. 줄지 않는 WASM 힙에 남던 복사 최고치 제거 → 160 → 115 MB
+- **IL 트리밍**: 안 쓰는 프레임워크 코드 제거, 게임·`GodotSharp`는 보존 → 30 → 10.7 MB
+- **웹용 GC**: SGen nursery 1 MB → 작은 GC가 짧아져 프레임 끊김 감소. `MONO_GC_PARAMS`로 변경 가능
+- **.NET 11** 런타임 팩, Emscripten 6.0.2
+
+0.1.1에 함께: Windows 한글 IME 수정, 웹 부팅용 GDScript 파서 메모리 해제.
+
+- 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.1`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.1`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|

@@ -3,7 +3,7 @@ name: 🧩 C# web export release (patched)
 # Builds the C# (.NET) web export kit from this branch:
 #   - mono web templates (release + debug, threaded) and the NuGet packages,
 #   - C# editors for Windows x86_64, macOS arm64 and Linux x86_64,
-# and publishes one zip per platform on the release dotnet-web-<version>-enhanced-<commit10>.
+# and publishes one zip per platform on the release dotnet-web-<godot version>-<ENHANCED_VERSION>.
 # Build order follows ComplexRobot/godot-dotnet-web-export: glue -> assemblies -> web templates.
 on:
   workflow_dispatch:
@@ -33,10 +33,10 @@ jobs:
       - id: ref
         run: |
           sha=$(git rev-parse HEAD)
-          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")
+          GODOT_VERSION=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")-$(tr -d '[:space:]' < ENHANCED_VERSION)
           echo "version=$GODOT_VERSION" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "tag=dotnet-web-${GODOT_VERSION}-enhanced-${sha::10}" >> "$GITHUB_OUTPUT"
+          echo "tag=dotnet-web-${GODOT_VERSION}" >> "$GITHUB_OUTPUT"
 
   # Linux C# editor: only needed to generate the C# glue (platform independent) and as the Linux editor.
   editor-linux:
@@ -221,7 +221,7 @@ jobs:
         run: |
           tag="${{ needs.prepare.outputs.tag }}"
           gh release create "$tag" --target "${{ needs.prepare.outputs.sha }}" \
-            --title "C# web export kit ${GODOT_VERSION}-enhanced (${tag##*-})" \
+            --title "C# web export kit ${GODOT_VERSION} (godot-enhanced)" \
             --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net11.0 (.NET 11 SDK), copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
             godot-*.zip
       - uses: actions/upload-artifact@v4
