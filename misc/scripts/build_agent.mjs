@@ -22,18 +22,28 @@ const out = join(root, "bin", "agent-jobs");
 const self = fileURLToPath(import.meta.url);
 const selfSource = readFileSync(self, "utf8");
 let busy = false;
+let current = null; // { job, child }
 
-const sh = (script, log) => new Promise((done) => {
-	const child = spawn("bash", ["-lc", script], { cwd: root });
+// 단계별 시간 제한 (초): 빌드 BUILD_AGENT_BUILD_TIMEOUT 기본 7200, 검사 BUILD_AGENT_CHECK_TIMEOUT 기본 1800
+const sh = (script, log, seconds = 7200) => new Promise((done) => {
+	const child = spawn("bash", ["-lc", script], { cwd: root, detached: true });
+	if (current) current.child = child;
+	const timer = setTimeout(() => { log.write(`\n[agent] ✘ 시간 초과 ${seconds}s → 중단\n`); try { process.kill(-child.pid, "SIGKILL"); } catch {} }, seconds * 1000);
 	child.stdout.on("data", (d) => log.write(d));
 	child.stderr.on("data", (d) => log.write(d));
-	child.on("close", (code) => done(code));
+	child.on("close", (code) => { clearTimeout(timer); done(code ?? 124); });
 });
 
 createServer(async (req, res) => {
 	const url = new URL(req.url, "http://x");
 	if (req.headers.authorization !== `Bearer ${token}`) { res.writeHead(401).end(); return; }
-	if (url.pathname === "/status") { res.end(busy ? "busy" : "idle"); return; }
+	if (url.pathname === "/status") { res.end(busy ? `busy ${current?.job ?? ""}` : "idle"); return; }
+	// 진행 중 작업 취소
+	if (req.method === "POST" && url.pathname === "/cancel") {
+		if (current?.child) { try { process.kill(-current.child.pid, "SIGKILL"); } catch {} res.end(`cancel ${current.job}`); }
+		else res.end("idle");
+		return;
+	}
 	if (req.method === "GET" && url.pathname.startsWith("/files/")) {
 		const file = resolve(out, decodeURIComponent(url.pathname.slice(7)));
 		if (!file.startsWith(out) || !existsSync(file)) { res.writeHead(404).end(); return; }
@@ -53,6 +63,7 @@ createServer(async (req, res) => {
 	if (busy) { res.writeHead(409).end("busy"); return; }
 	busy = true;
 	const job = `${Date.now()}`;
+	current = { job, child: null };
 	const dir = join(out, job);
 	mkdirSync(dir, { recursive: true });
 	res.on("error", () => {});
@@ -79,7 +90,7 @@ createServer(async (req, res) => {
 			? `{ command -v brew >/dev/null && [ -x "$(brew --prefix python@3.12 2>/dev/null)/bin/python3.12" ] && export EMSDK_PYTHON="$(brew --prefix python@3.12)/bin/python3.12"; true; } && source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && `
 			: "";
 		const build = args ? ` && ${pre}${emsdk}scons ${args} -j${jobs}` : "";
-		let code = await sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"${build}`, log);
+		let code = await sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"${build}`, log, Number(process.env.BUILD_AGENT_BUILD_TIMEOUT || 7200));
 		const files = code === 0 && args
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
 			: [];
@@ -90,7 +101,7 @@ createServer(async (req, res) => {
 			if (code !== 0) break;
 			if (!existsSync(join(root, "misc", "scripts", "agent_tests", `${t}.sh`))) { log.write(`[agent] ✘ 검사 없음: ${t}\n`); code = 2; break; }
 			log.write(`\n[agent] ── 검사 ${t}\n`);
-			const c = await sh(`${pre}JOB_DIR="${dir}" bash misc/scripts/agent_tests/${t}.sh`, log);
+			const c = await sh(`${pre}JOB_DIR="${dir}" bash misc/scripts/agent_tests/${t}.sh`, log, Number(process.env.BUILD_AGENT_CHECK_TIMEOUT || 1800));
 			checks[t] = c === 0 ? "pass" : "fail";
 			if (c !== 0) code = c;
 		}
@@ -104,6 +115,7 @@ createServer(async (req, res) => {
 		result = { code: 1, job, files: [], error: String(e) };
 	} finally {
 		busy = false;
+		current = null;
 		writeFileSync(join(dir, "result.json"), JSON.stringify(result));
 		file.end();
 		if (!res.destroyed) res.end(`\n@@FILES ${JSON.stringify(result)}\n`);
