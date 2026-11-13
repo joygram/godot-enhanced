@@ -76,9 +76,10 @@ jobs:
       - name: Build editor
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential scons pkg-config libx11-dev libxcursor-dev libxinerama-dev \
+          sudo apt-get install -y build-essential pkg-config libx11-dev libxcursor-dev libxinerama-dev \
             libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev libxi-dev libxrandr-dev libwayland-dev
-          scons platform=linuxbsd arch=x86_64 target=editor accesskit=no debug_symbols=no -j"$(nproc)"
+          python3 -m pip install --user scons
+          python3 -m SCons platform=linuxbsd arch=x86_64 target=editor accesskit=no debug_symbols=no -j"$(nproc)"
       - name: Package and upload
         env:
           GH_TOKEN: ${{ github.token }}
