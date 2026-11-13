@@ -1,0 +1,8 @@
+{
+	"_comment": "웹 템플릿에 정적 링크할 GDExtension 목록. agent_tests/static-gdext.sh 가 빌드·릴리스, 템플릿은 static_gdextensions=<이름> 으로 링크",
+	"sqlite": {
+		"repo": "https://github.com/2shady4u/godot-sqlite.git",
+		"ref": "v4.9",
+		"entry": "sqlite_library_init"
+	}
+}

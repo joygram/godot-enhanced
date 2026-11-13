@@ -26,13 +26,42 @@ env.CommandNoCache(
 # GDExtensions linked statically (static_gdextensions="path/lib.a:entry_symbol,..."): their entry
 # functions go into a table the library loader checks before opening a library. Lets builds
 # without dynamic linking (web templates without dlink, e.g. C#) use GDExtensions.
+def resolve_static_gdextension(name):
+    # Name from misc/static_gdextensions.json → prebuilt .a (agent_tests/static-gdext.sh) in
+    # STATIC_GDEXT_DIR (default ~/static-gdext), downloaded from the static-gdext-emsdk<version>
+    # GitHub release when missing.
+    import json
+    import subprocess
+
+    with open(File("#misc/static_gdextensions.json").abspath, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if name not in manifest:
+        raise RuntimeError("static_gdextensions: '" + name + "' is not in misc/static_gdextensions.json.")
+    info = manifest[name]
+    suffix = "" if env["threads"] else ".nothreads"
+    filename = f"{name}-{info['ref']}.web.{env['target']}.wasm32{suffix}.a"
+    folder = os.path.expanduser(os.environ.get("STATIC_GDEXT_DIR", "~/static-gdext"))
+    lib = os.path.join(folder, filename)
+    if not os.path.isfile(lib):
+        version = subprocess.run(["emcc", "-dumpversion"], capture_output=True, text=True, shell=os.name == "nt").stdout.strip()
+        tag = "static-gdext-emsdk" + version
+        print(f"static_gdextensions: downloading {filename} from release {tag}")
+        os.makedirs(folder, exist_ok=True)
+        subprocess.run(["gh", "release", "download", tag, "-p", filename, "-D", folder, "--clobber"], cwd=Dir("#").abspath)
+        if not os.path.isfile(lib):
+            raise RuntimeError(
+                f"static_gdextensions: {filename} not found locally or in release {tag}. Build it with misc/scripts/agent_tests/static-gdext.sh."
+            )
+    return lib + ":" + info["entry"]
+
+
 static_entries = []
 for entry in env["static_gdextensions"].split(","):
     entry = entry.strip()
     if not entry:
         continue
     if ":" not in entry:
-        raise RuntimeError("static_gdextensions entries must be 'path/to/lib.a:entry_symbol', got '" + entry + "'.")
+        entry = resolve_static_gdextension(entry)
     lib, symbol = entry.rsplit(":", 1)
     lib = os.path.abspath(os.path.expanduser(lib))
     if not os.path.isfile(lib):
