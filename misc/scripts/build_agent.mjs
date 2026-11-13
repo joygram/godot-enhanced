@@ -104,6 +104,10 @@ createServer(async (req, res) => {
 		// 검사 = 저장소의 misc/scripts/agent_tests/<이름>.sh 만 (목록 밖 명령 실행 안 함)
 		const tests = (url.searchParams.get("test") || "").split(",").map((t) => t.replace(/[^a-z0-9-]/g, "")).filter(Boolean);
 		const release = (url.searchParams.get("release") || "").replace(/[^a-z-]/g, "");
+		// 검사에 넘길 값 (허용 목록만): WEB_URL = 측정할 웹 빌드 zip 주소, BROWSER
+		const testEnv = [...url.searchParams.getAll("env")]
+			.map((kv) => kv.split("=", 2)).filter(([k, v]) => ["WEB_URL", "BROWSER"].includes(k) && /^[\w.:/%?&=+-]*$/.test(v ?? ""))
+			.map(([k, v]) => `${k}='${v}'`).join(" ");
 		const jobs = "$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)";
 		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args || "(없음)"} test=${tests.join(",") || "-"} release=${release || "-"}\n`);
 		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
@@ -138,7 +142,7 @@ createServer(async (req, res) => {
 			if (code !== 0) break;
 			if (!existsSync(join(root, "misc", "scripts", "agent_tests", `${t}.sh`))) { log.write(`[agent] ✘ 검사 없음: ${t}\n`); code = 2; break; }
 			log.write(`\n[agent] ── 검사 ${t}\n`);
-			const c = await step(`검사 ${t}`, () => sh(`${pre}JOB_DIR="${dir}" bash misc/scripts/agent_tests/${t}.sh`, log, Number(process.env.BUILD_AGENT_CHECK_TIMEOUT || 1800)));
+			const c = await step(`검사 ${t}`, () => sh(`${pre}JOB_DIR="${dir}" ${testEnv} bash misc/scripts/agent_tests/${t}.sh`, log, Number(process.env.BUILD_AGENT_CHECK_TIMEOUT || 1800)));
 			checks[t] = c === 0 ? "pass" : "fail";
 			if (c !== 0) code = c;
 		}

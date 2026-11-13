@@ -107,6 +107,9 @@ const release = opt("--release");
 const sconsArgs = rest;
 console.log(`[remote-build] ${host} ← ${sha.slice(0, 10)} (${pushed ? "푸시됨" : `미푸시 묶음 ${(body.length / 1048576).toFixed(1)}MB`}) : scons ${sconsArgs.join(" ") || "(없음)"}${test ? ` → 검사 ${test}` : ""}${release ? ` → 릴리스 ${release}` : ""}`);
 const q = new URLSearchParams({ sha, args: sconsArgs.join(" "), test, release });
+// --env KEY=VAL (검사에 넘김, 에이전트 허용 목록: WEB_URL, BROWSER). 여러 번 가능
+for (let i; (i = sconsArgs.indexOf("--env")) >= 0;) { q.append("env", sconsArgs[i + 1] ?? ""); sconsArgs.splice(i, 2); }
+q.set("args", sconsArgs.join(" "));
 const res = await fetch(`${base}/build?${q}`, { method: "POST", headers: auth, body });
 if (!res.ok) { console.error(`[remote-build] ✘ ${res.status} ${await res.text()}`); process.exit(1); }
 
