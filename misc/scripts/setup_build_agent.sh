@@ -9,6 +9,7 @@
 #   WITH_EMSDK=1       웹 템플릿용 Emscripten 설치 (EMSDK_VERSION 기본 6.0.2)
 #   WITH_DOTNET=1      C# 빌드용 .NET 11 SDK + wasm-tools 설치
 #   BUILD_AGENT_PORT   기본 8790
+#   NODE_VERSION       nvm 사용 시 node 버전 (기본 nvm default)
 set -euo pipefail
 
 REPO_URL="https://github.com/joygram/godot-enhanced.git"
@@ -19,6 +20,13 @@ CONF_DIR="$HOME/.config/godot-enhanced"
 OS="$(uname -s)"
 say() { printf '\n[setup] %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# 0) nvm 있으면 그 node 사용 (NODE_VERSION 기본 = nvm default)
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+	# shellcheck disable=SC1091
+	set +u; . "$NVM_DIR/nvm.sh"; nvm use "${NODE_VERSION:-default}" >/dev/null || nvm install "${NODE_VERSION:-22}"; set -u
+fi
 
 # 1) 기본 도구
 say "도구 확인 ($OS)"
@@ -80,11 +88,21 @@ NODE_BIN="$(command -v node)"
 } > "$CONF_DIR/agent.env"
 chmod 600 "$CONF_DIR/agent.env"
 RUNNER="$CONF_DIR/run-agent.sh"
-cat > "$RUNNER" <<EOF
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+	# nvm: 실행 때마다 nvm default 로 node 결정 (버전 바꿔도 유지)
+	cat > "$RUNNER" <<EOF
+#!/usr/bin/env bash
+set -a; source "$CONF_DIR/agent.env"; set +a
+export NVM_DIR="$NVM_DIR"; . "\$NVM_DIR/nvm.sh"; nvm use "${NODE_VERSION:-default}" >/dev/null
+cd "$REPO_DIR" && exec node misc/scripts/build_agent.mjs
+EOF
+else
+	cat > "$RUNNER" <<EOF
 #!/usr/bin/env bash
 set -a; source "$CONF_DIR/agent.env"; set +a
 cd "$REPO_DIR" && exec "$NODE_BIN" misc/scripts/build_agent.mjs
 EOF
+fi
 chmod +x "$RUNNER"
 
 # 5) 서비스 등록
