@@ -18,9 +18,11 @@ source "$HOME/emsdk/emsdk_env.sh" >/dev/null 2>&1
 echo "emcc: $(emcc --version | head -1)"
 dir="$HOME/.cache/godot-enhanced-web"
 mkdir -p "$dir" && cd "$dir"
+echo "── npm (playwright)"
 [ -f package.json ] || npm init -y >/dev/null
-[ -d node_modules/playwright ] || npm install -s playwright@1.49.1 >/dev/null
-npx -y playwright install chromium webkit >/dev/null
+[ -d node_modules/playwright ] || npm install --no-fund --no-audit playwright@1.49.1
+echo "── 브라우저 내려받기 (chromium, webkit)"
+npx -y playwright install chromium webkit 2>&1 | grep -v '^\s*|' || true
 # 브라우저 실행 확인 (리눅스 시스템 라이브러리 누락 시 sudo npx playwright install-deps 필요)
 for b in chromium webkit; do
 	if node -e "setTimeout(()=>{console.error('60초 안에 안 뜸');process.exit(1)},60000).unref();require('playwright')['$b'].launch().then(b=>b.close()).then(()=>process.exit(0)).catch(e=>{console.error(String(e).split('\n').slice(0,3).join(' | '));process.exit(1)})"; then echo "$b: 실행 OK"
