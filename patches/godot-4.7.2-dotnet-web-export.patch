@@ -1,18 +1,19 @@
 diff --git a/modules/mono/build_scripts/mono_configure.py b/modules/mono/build_scripts/mono_configure.py
-index 98c50dcc22..a5feffba32 100644
+index 98c50dcc22..a27d39751b 100644
 --- a/modules/mono/build_scripts/mono_configure.py
 +++ b/modules/mono/build_scripts/mono_configure.py
-@@ -1,3 +1,9 @@
+@@ -1,3 +1,10 @@
 +import glob
 +import os
 +import os.path
++import re
 +import shutil
 +
 +
  def is_desktop(platform):
      return platform in ["windows", "macos", "linuxbsd"]
  
-@@ -11,12 +17,161 @@ def module_supports_tools_on(platform):
+@@ -11,12 +18,164 @@ def module_supports_tools_on(platform):
  
  
  def configure(env, env_mono):
@@ -94,7 +95,10 @@ index 98c50dcc22..a5feffba32 100644
 +        if env["dlink_enabled"]:
 +            env_thirdparty.Append(CPPDEFINES=["WASM_SUPPORTS_DLOPEN"])
 +        env_thirdparty.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "wasm"))
-+        get_runtime_pack_project_includes = os.path.join(get_runtime_pack_project_path, "obj", "Release", "net9.0", rid, "wasm", "for-publish")
++        # The target framework is set in one place, GetRuntimePack.csproj. Game projects must target the same one.
++        with open(os.path.join(get_runtime_pack_project_path, "GetRuntimePack.csproj"), encoding="utf-8") as f:
++            runtime_pack_tfm = re.search(r"<TargetFramework>([^<]+)</TargetFramework>", f.read()).group(1)
++        get_runtime_pack_project_includes = os.path.join(get_runtime_pack_project_path, "obj", "Release", runtime_pack_tfm, rid, "wasm", "for-publish")
 +
 +        aot_dir = env.get("mono_wasm_aot_dir", "")
 +        if aot_dir:
@@ -606,10 +610,10 @@ index 8805ab6f0a..d259dcf685 100644
  #endif
 diff --git a/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
 new file mode 100644
-index 0000000000..020e2a1ea5
+index 0000000000..f9a9a4f515
 --- /dev/null
 +++ b/modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,60 @@
 +<!--
 +  Adapted from:
 +  https://github.com/lambdageek/monovm-embed-sample/blob/c35f945509b0d1e4f4412a7076c9e769708c3ff1/src/GetRuntimePack/GetRuntimePack.csproj
@@ -617,7 +621,8 @@ index 0000000000..020e2a1ea5
 +<Project Sdk="Microsoft.NET.Sdk">
 +
 +  <PropertyGroup>
-+    <TargetFramework>net9.0</TargetFramework>
++    <!-- Game projects exported for the web must target the same framework. -->
++    <TargetFramework>net11.0</TargetFramework>
 +  </PropertyGroup>
 +
 +  <!-- This plus a non-empty $(RuntimeIdentifier) are enough to choose Mono. -->
@@ -907,6 +912,19 @@ index 0000000000..65298f71f6
 +    {
 +        throw new UnreachableException();
 +    }
++}
+diff --git a/modules/mono/runtime/GetRuntimePack/global.json b/modules/mono/runtime/GetRuntimePack/global.json
+new file mode 100644
+index 0000000000..568ee5c914
+--- /dev/null
++++ b/modules/mono/runtime/GetRuntimePack/global.json
+@@ -0,0 +1,7 @@
++{
++  "sdk": {
++    "version": "11.0.100",
++    "rollForward": "latestFeature",
++    "allowPrerelease": false
++  }
 +}
 diff --git a/platform/web/SCsub b/platform/web/SCsub
 index c5c068093c..20e90f3aa0 100644

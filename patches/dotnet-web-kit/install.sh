@@ -9,7 +9,7 @@ version=${GODOT_VERSION:-4.7.2.stable}
 for file in web_release.zip web_debug.zip nuget; do
   [[ -e "$here/$file" ]] || { echo "Error: '$here/$file' not found." >&2; exit 1; }
 done
-command -v dotnet >/dev/null || { echo "Error: 'dotnet' not found. Install the .NET 9 SDK first." >&2; exit 1; }
+command -v dotnet >/dev/null || { echo "Error: 'dotnet' not found. Install the .NET 11 SDK first." >&2; exit 1; }
 
 case "$(uname -s)" in
   Darwin) data_dir="$HOME/Library/Application Support/Godot" ;;
@@ -34,9 +34,10 @@ else
   dotnet nuget add source "$nuget_dir" --name NugetSource || echo "Warning: could not add the NuGet source." >&2
 fi
 
-# net9.0 projects: the .NET 9 SDK uses wasm-tools, the .NET 10 SDK needs wasm-tools-net9.
+# net11.0 projects need the .NET 11 SDK and its wasm-tools workload (a newer SDK would need wasm-tools-net11).
 sdk_major=$(dotnet --version | cut -d. -f1)
-if (( sdk_major >= 10 )); then workload=wasm-tools-net9; else workload=wasm-tools; fi
+if (( sdk_major < 11 )); then echo "Error: .NET 11 SDK required, found $(dotnet --version)." >&2; exit 1; fi
+if (( sdk_major > 11 )); then workload=wasm-tools-net11; else workload=wasm-tools; fi
 echo "Installing workload $workload..."
 dotnet workload install "$workload" || echo "Warning: workload install failed; try again with sudo." >&2
 

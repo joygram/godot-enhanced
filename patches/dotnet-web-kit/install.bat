@@ -16,9 +16,9 @@ copy /y "%~dp0nuget\*" "%NUGET_FOLDER%" >nul
 rem Run dotnet from a folder without global.json so the SDK choice is not forced.
 pushd "%TEMP%"
 dotnet nuget add source "%NUGET_FOLDER%" --name NugetSource
-echo Installing workload wasm-tools (.NET 9 SDK)...
+echo Installing workload wasm-tools (.NET 11 SDK)...
 dotnet workload install wasm-tools
 popd
 
-echo Done. With the .NET 10 SDK also run: dotnet workload install wasm-tools-net9
+echo Done. Projects must target net11.0. With an SDK newer than 11 run: dotnet workload install wasm-tools-net11
 pause

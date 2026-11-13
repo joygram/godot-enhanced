@@ -26,8 +26,17 @@ The patch is mixed, so building it needs more than SCons:
 | Python / SCons | 5 (`mono_configure.py`, `config.py`, `SCsub`, `detect.py`, `emscripten_helpers.py`) | Build options, mono support on web, JS post step |
 
 - Besides the engine binary the build produces managed output: the `GodotSharp` assemblies and NuGet packages. They must be built after the C# glue is generated and shipped with the editor.
-- Build tools needed: SCons, Emscripten (web), .NET SDK 9 and the `wasm-tools` workload.
+- Build tools needed: SCons, Emscripten 6.0.2 (web), .NET 11 SDK and the `wasm-tools` workload.
 - Applying only this patch to a stock tree is not enough for users: they also need the matching NuGet packages (built from the patched SDK files) and `.mono` web templates.
+
+## .NET version: 11
+
+Changed in this repository: the source patch targeted .NET 9; here it targets **.NET 11** (`net11.0`).
+
+- .NET 9 reached end of support on 2026-11-10, the day .NET 11 shipped.
+- The framework is set in one place, `modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj`; `mono_configure.py` reads it from there. `GetRuntimePack/global.json` pins the .NET 11 SDK.
+- Memory: from .NET 10 on, the Mono GC on WebAssembly allocates each 16 KB heap block with its own `posix_memalign` (.NET 9 grouped 32 blocks). With Emscripten's default allocator this can double the heap's footprint in linear memory ([dotnet/runtime#136152](https://github.com/dotnet/runtime/issues/136152), open). The web templates here link `-sMALLOC=mimalloc`; whether that avoids the overhead is not measured yet.
+- CoreCLR on WebAssembly is opt-in in .NET 11; this patch uses Mono, the default browser runtime in .NET 11.
 
 ## Sources
 
@@ -41,8 +50,8 @@ Our own addition: it is kept as one patch file so it can be applied alone or wit
 
 ## Requirements (game project)
 
-- `.csproj`: `<TargetFramework>net9.0</TargetFramework>`.
-- .NET 9 SDK, or .NET 10 SDK with the `wasm-tools-net9` workload (plain `wasm-tools` on the .NET 9 SDK).
+- `.csproj`: `<TargetFramework>net11.0</TargetFramework>`. It must be the framework the web templates were built for; a template only runs games built for its own .NET version.
+- .NET 11 SDK with the `wasm-tools` workload.
 - A `Program.cs` with at least one top-level statement in the project root; `{}` is enough.
 - Web templates `web_release.zip` / `web_debug.zip` in `export_templates/<version>.stable.mono`.
 - The NuGet packages built with the editor (`GodotSharp` etc.) in a local NuGet source.
@@ -81,7 +90,7 @@ scons platform=web target=template_debug module_mono_enabled=yes
 ```
 
 - Output: `bin/godot.web.template_release.wasm32.mono.zip` and `...template_debug...mono.zip`. Rename to `web_release.zip` / `web_debug.zip`.
-- Upstream CI of the source project notes that Emscripten 6.0.6 / 6.0.7 with full LTO ran out of memory; it uses 6.0.5.
+- Use Emscripten 6.0.2, the version the .NET 11 Mono runtime pack is built with (`dotnet/runtime` `release/11.0`). The source project used 6.0.5 with .NET 9 and noted that 6.0.6 / 6.0.7 with full LTO ran out of memory on the standard runner.
 
 ## Status
 
@@ -111,8 +120,17 @@ scons platform=web target=template_debug module_mono_enabled=yes
 | Python / SCons | 5 | 빌드 옵션, 웹의 mono 지원, JS 후처리 |
 
 - 결과물이 엔진 바이너리 하나로 끝나지 않습니다. `GodotSharp` 어셈블리와 NuGet 패키지도 함께 만들어야 하고, C# 글루를 먼저 생성한 뒤에 빌드해서 편집기와 함께 배포합니다.
-- 필요한 도구: SCons, Emscripten(웹), .NET SDK 9, `wasm-tools` 워크로드.
+- 필요한 도구: SCons, Emscripten 6.0.2(웹), .NET 11 SDK, `wasm-tools` 워크로드.
 - 패치만 일반 소스에 적용해서는 사용자가 쓸 수 없습니다. 패치된 SDK로 만든 NuGet 패키지와 `.mono` 웹 템플릿이 함께 있어야 합니다.
+
+### .NET 버전: 11
+
+이 저장소에서 바꾼 점: 원본 패치는 .NET 9 기준이었고, 여기서는 **.NET 11**(`net11.0`)을 대상으로 합니다.
+
+- .NET 9는 .NET 11이 나온 2026-11-10에 지원이 끝났습니다.
+- 대상 프레임워크는 `modules/mono/runtime/GetRuntimePack/GetRuntimePack.csproj` 한 곳에서만 정하고, `mono_configure.py`가 그 값을 읽습니다. `GetRuntimePack/global.json`이 .NET 11 SDK를 고정합니다.
+- 메모리: .NET 10부터 WebAssembly의 Mono GC가 16KB 힙 블록을 하나씩 `posix_memalign`으로 할당합니다(.NET 9는 32개씩 묶음). Emscripten 기본 할당기에서는 선형 메모리 사용량이 약 2배가 될 수 있습니다([dotnet/runtime#136152](https://github.com/dotnet/runtime/issues/136152), 미해결). 여기 웹 템플릿은 `-sMALLOC=mimalloc`으로 링크하지만, 이것으로 낭비가 없어지는지는 아직 측정하지 않았습니다.
+- .NET 11에서 CoreCLR on WebAssembly는 선택 기능이고, 이 패치는 .NET 11의 기본 브라우저 런타임인 Mono를 씁니다.
 
 ### 출처
 
@@ -124,8 +142,8 @@ scons platform=web target=template_debug module_mono_enabled=yes
 
 ### 게임 프로젝트 요구 사항
 
-- `.csproj`의 `TargetFramework`를 `net9.0`으로 설정합니다.
-- .NET 9 SDK가 필요합니다. .NET 10 SDK를 쓴다면 `wasm-tools-net9` 워크로드를 설치합니다.
+- `.csproj`의 `TargetFramework`를 `net11.0`으로 설정합니다. 웹 템플릿을 빌드한 .NET 버전과 같아야 하며, 템플릿은 자기 버전으로 빌드한 게임만 실행합니다.
+- .NET 11 SDK와 `wasm-tools` 워크로드가 필요합니다.
 - 프로젝트 루트에 최상위 문장이 하나 이상 있는 `Program.cs`가 필요합니다. `{}`만 있어도 됩니다.
 - `export_templates/<버전>.stable.mono` 폴더에 `web_release.zip` / `web_debug.zip`을 둡니다.
 - 편집기와 함께 빌드한 NuGet 패키지(`GodotSharp` 등)를 로컬 NuGet 소스로 등록합니다.

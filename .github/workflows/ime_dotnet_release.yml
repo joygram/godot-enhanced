@@ -17,8 +17,8 @@ permissions:
 
 env:
   GODOT_VERSION: "4.7.2"
-  # Emscripten 6.0.6 / 6.0.7 with LTO ran out of memory on the standard runner.
-  EMSDK_VERSION: "6.0.5"
+  # Same Emscripten as the .NET 11 Mono runtime pack (dotnet/runtime release/11.0: 6.0.2).
+  EMSDK_VERSION: "6.0.2"
 
 jobs:
   prepare:
@@ -47,7 +47,7 @@ jobs:
           ref: ${{ needs.prepare.outputs.sha }}
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 11.0.x
       - name: Build editor
         run: |
           sudo apt-get update
@@ -79,7 +79,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 11.0.x
       - name: Build editor
         run: |
           pip install scons
@@ -104,7 +104,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 11.0.x
       - name: Build editor
         run: |
           pip install scons
@@ -136,16 +136,14 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
-      # The runner also has newer SDKs (up to .NET 11 preview); without a pin `dotnet` picks the newest and
-      # installs the wasm-tools workload of that version, which breaks the net9.0 runtime pack build.
-      - name: Pin .NET SDK 9
+          dotnet-version: 11.0.x
+      # GetRuntimePack/global.json pins SDK 11, whose wasm-tools workload covers net11.0.
+      - name: Install wasm-tools workload (SDK 11)
+        working-directory: modules/mono/runtime/GetRuntimePack
         run: |
-          printf '{\n  "sdk": {\n    "version": "9.0.100",\n    "rollForward": "latestFeature"\n  }\n}\n' > global.json
-          dotnet --list-sdks
           dotnet --version
-      - run: dotnet workload install wasm-tools
-      - run: dotnet workload list
+          dotnet workload install wasm-tools
+          dotnet workload list
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: ${{ env.EMSDK_VERSION }}
@@ -212,7 +210,7 @@ jobs:
           tag="${{ needs.prepare.outputs.tag }}"
           gh release create "$tag" --target "${{ needs.prepare.outputs.sha }}" \
             --title "C# web export kit ${GODOT_VERSION}-ime (${tag##*-})" \
-            --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net9.0, copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
+            --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net11.0 (.NET 11 SDK), copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
             godot-*.zip
       - uses: actions/upload-artifact@v4
         with:

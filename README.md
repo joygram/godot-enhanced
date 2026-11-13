@@ -49,10 +49,11 @@ Apply all three (as above), or only the ones you need — each patch also applie
 
 ## C# (.NET) web export
 
+- Targets **.NET 11** (`net11.0`); game projects must use the same framework as the templates. .NET 9 support ended on 2026-11-10.
 - Needs the C# editor and `.mono` web templates built from this branch with `module_mono_enabled=yes`. How: [patches/dotnet-web-export.md](patches/dotnet-web-export.md).
 - Releases: workflow `ime_dotnet_release.yml` publishes them to [Releases](https://github.com/joygram/godot-ime/releases) once it has run successfully. Not published yet.
 - No GDExtension in C# web builds. Threaded template: host with COOP / COEP headers.
-- Not only C++: the patch also changes C#, MSBuild and SCons files. The build needs the .NET SDK 9 and the `wasm-tools` workload, and ships `GodotSharp` assemblies and NuGet packages next to the editor.
+- Not only C++: the patch also changes C#, MSBuild and SCons files. The build needs the .NET 11 SDK and the `wasm-tools` workload, and ships `GodotSharp` assemblies and NuGet packages next to the editor.
 
 ## Keeping up with upstream
 
@@ -126,10 +127,11 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 
 ### C#(.NET) 웹 내보내기
 
+- **.NET 11**(`net11.0`) 대상입니다. 게임 프로젝트도 템플릿과 같은 버전이어야 합니다. .NET 9는 2026-11-10에 지원이 끝났습니다.
 - `module_mono_enabled=yes`로 이 브랜치에서 빌드한 C# 편집기와 `.mono` 웹 템플릿이 필요합니다. 방법은 [patches/dotnet-web-export.md](patches/dotnet-web-export.md)에 있습니다.
 - 결과물은 `ime_dotnet_release.yml` 워크플로가 성공하면 [Releases](https://github.com/joygram/godot-ime/releases)에 올라옵니다. 아직 올라와 있지 않습니다.
 - C# 웹 빌드에서는 GDExtension을 쓸 수 없습니다. 스레드를 쓰는 템플릿이라 호스팅에서 COOP / COEP 헤더가 필요합니다.
-- C++만 바뀌는 것이 아닙니다. C#, MSBuild, SCons 파일도 바뀌어서 빌드에 .NET SDK 9와 `wasm-tools` 워크로드가 필요하고, 편집기와 함께 `GodotSharp` 어셈블리·NuGet 패키지가 배포됩니다.
+- C++만 바뀌는 것이 아닙니다. C#, MSBuild, SCons 파일도 바뀌어서 빌드에 .NET 11 SDK와 `wasm-tools` 워크로드가 필요하고, 편집기와 함께 `GodotSharp` 어셈블리·NuGet 패키지가 배포됩니다.
 
 ### 새 Godot 버전으로 옮기기
 
