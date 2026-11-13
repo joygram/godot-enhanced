@@ -32,6 +32,7 @@ objs=$(find src -name "*.o" | sort)
 rm -f "$out"
 emar rcs "$out" $objs "$work"/*.o
 rm -rf "$work"
-emnm "$out" 2>/dev/null | grep -q " T sqlite_library_init" || { echo "✘ sqlite_library_init 없음"; exit 1; }
+syms="$(emnm "$out" 2>/dev/null || true)"
+grep -E "[TtW] sqlite_library_init$" <<<"$syms" || { echo "✘ sqlite_library_init 없음"; echo "$objs"; exit 1; }
 ls -la "$out"
 echo "✔ static-gdext-sqlite → $out"
