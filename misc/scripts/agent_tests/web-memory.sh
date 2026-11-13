@@ -50,6 +50,8 @@ name="Web"
 platform="Web"
 runnable=true
 export_filter="all_resources"
+include_filter=""
+exclude_filter=""
 export_path=""
 [preset.0.options]
 custom_template/debug=""
