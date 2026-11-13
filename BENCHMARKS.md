@@ -118,16 +118,36 @@
 - 효과 거의 없음 → ICU 는 이미 Invariant, 링커가 대부분 걸러내고 있었음
 - 같은 날 재측정 기존 힙 66.5 (3절 55.4 와 다름, 원인 미확인)
 
-## 10. rpg2d DB + 아이콘 300개 (godot-sqlite, Windows Chrome)
+## 10. rpg2d DB + 아이콘 300개 — SQLite 4방식 (Windows Chrome, nothreads release)
 
-| 항목 | GDScript | C# |
-|---|---|---|
-| wasm 힙 부팅 → DB 후 | 38.4 → 198.8 | 측정 불가 |
-| DB 205테이블 80,108행 | 370ms | 측정 불가 |
-| 아이콘 300개 | 36ms, 힙 계단 안 넘음 | 측정 불가 |
+같은 DB(29.5MB, 205테이블, 테이블당 최대 1000행 = 80,108행), 같은 아이콘 300개.
 
-- C# + GDExtension(dlink) 템플릿 링크 실패: .NET 런타임 팩 `.a` 가 PIC 아님 (`recompile with -fPIC`)
-- 즉 C# 웹에서는 godot-sqlite 같은 GDExtension 사용 불가
+| 방식 | wasm 힙 부팅 → 후 | DB 읽기 | 아이콘 300 | 다운로드 |
+|---|---|---|---|---|
+| A GDScript + GDExtension(dlink) | 38.4 → 198.8 | 386ms | 37ms | 77.7 |
+| B GDScript + 정적 링크 | 38.4 → 198.8 | 292ms | 34ms | **67.8** |
+| C C# + 정적 링크 (ClassDB 호출) | 55.4 → 238.5 | 290ms | 54ms | 77.8 |
+| D C# + Microsoft.Data.Sqlite | 55.4 → **194.3** | **2,228ms** | 54ms | 77.7 |
+
+- 다운로드 = wasm + pck + js
+- B: dlink 대비 다운로드 −9.8MB, DB −24%, 힙 동일
+- C: 행이 Godot Dictionary + C# 래퍼 → 힙 최대
+- D: 행이 C# Dictionary, DB 를 user:// 로 복사(26ms) → 힙 최소, 읽기 7.7배 느림
+- C# 템플릿은 dlink 불가 (.NET 런타임 팩 `.a` 가 PIC 아님) → C#은 C 또는 D 만 가능
+- 1회 측정, 힙은 20% 계단
+
+### 이 비교로 고친 C# 웹 버그
+
+| 증상 | 수정 |
+|---|---|
+| `Variant.As*`·`Call()` 에서 `aot-runtime-wasm.c:188` | 엔진 함수 서명을 m2n 표에 (`GodotSharpSignatures.g.cs`) |
+| `await ToSignal` 에서 `function signature mismatch` | Error 반환 interop 3종 int64 |
+| 단일 스레드 내보내기가 멀티스레드 팩 선택 | `Browser.props` 에서 `WasmEnableThreads` |
+
+- 서명 표 재생성: `dotnet run misc/scripts/web_signatures.cs <GodotSharp.dll> <m2n.h> --emit <출력>`
+- 새 옵션 `static_gdextensions="lib.a:entry,..."`: GDExtension 정적 링크
+- 정적 .a 생성: `agent_tests/static-gdext-sqlite.sh`
+- 새 옵션 `mono_wasm_native_packages="Id/Version,..."`: NuGet 네이티브 라이브러리 링크
 
 ## 남은 것
 
