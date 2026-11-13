@@ -1,0 +1,89 @@
+name: 🧰 Editor release (patched)
+
+# Builds the patched Godot editor for macOS (universal) and Linux and attaches the zips
+# to the release editor-<version>-ime-<commit10>. Windows x86_64 is built locally (MSVC).
+# Asset layout matches a SCons bin/ folder: godot.<platform>.editor.<arch>[.exe] or Godot.app.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit to build (default: branch head)"
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.ref.outputs.sha }}
+      tag: ${{ steps.ref.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - id: ref
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=editor-${GODOT_VERSION}-ime-${sha::10}" >> "$GITHUB_OUTPUT"
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.ref.outputs.tag }}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "${{ steps.ref.outputs.sha }}" \
+            --title "Godot ${GODOT_VERSION}-ime editor (${tag##*-})" --notes "Patched Godot ${GODOT_VERSION} editor builds."
+
+  macos:
+    needs: prepare
+    runs-on: macos-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Build universal editor
+        run: |
+          pip3 install --break-system-packages scons || pip3 install scons
+          flags="target=editor accesskit=no angle=no vulkan=no debug_symbols=no -j$(sysctl -n hw.ncpu)"
+          scons platform=macos arch=x86_64 $flags
+          scons platform=macos arch=arm64 generate_bundle=yes $flags
+      - name: Package
+        run: |
+          mkdir pkg
+          app=$(ls -d bin/*.app | head -1)
+          cp -R "$app" pkg/Godot.app
+          (cd pkg && ditto -c -k --keepParent Godot.app "../godot-${GODOT_VERSION}-ime.macos.editor.arm64.zip")
+          cp "godot-${GODOT_VERSION}-ime.macos.editor.arm64.zip" "godot-${GODOT_VERSION}-ime.macos.editor.x86_64.zip"
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*-ime.macos.editor.*.zip --clobber
+
+  linux:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Build editor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential scons pkg-config libx11-dev libxcursor-dev libxinerama-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev libxi-dev libxrandr-dev libwayland-dev
+          scons platform=linuxbsd arch=x86_64 target=editor accesskit=no debug_symbols=no -j"$(nproc)"
+      - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd bin
+          zip -9 "../godot-${GODOT_VERSION}-ime.linuxbsd.editor.x86_64.zip" godot.linuxbsd.editor.x86_64
+          cd ..
+          gh release upload "${{ needs.prepare.outputs.tag }}" "godot-${GODOT_VERSION}-ime.linuxbsd.editor.x86_64.zip" --clobber
