@@ -76,7 +76,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
 - Godot .NET 11 web, Godot C# WebAssembly, Mono WASM, Godot mono HTML5
 - Unity to Godot C# migration, Unity alternative web export
-- Godot web export memory, WASM heap out of memory, Godot web game too big, GDScript parser memory
+- Godot memory optimization, Godot performance optimization, Godot web game too big
+- Godot web export memory, WASM heap out of memory, GDScript parser memory leak
 - Godot SQLite web, GDExtension web export, GDExtension without dlink, SharedArrayBuffer COOP COEP
 - Godot web game itch.io Poki CrazyGames, Godot AdSense web, Godot Safari iOS web
 - Godot ARM64 Windows Linux, Apple Silicon Godot
@@ -305,6 +306,7 @@ git cherry-pick 4.7.2-stable..origin/main
 **검색어:**
 - 고도 C# 웹 내보내기, 고도 4 C# 웹 빌드 안됨, 고도 엔진 C# HTML5, Godot .NET 웹 빌드
 - 유니티에서 고도로 이전, 유니티 대안 웹게임
+- 고도 메모리 최적화, 고도 성능 최적화, 고도 메모리 성능 최적화
 - 고도 웹 빌드 메모리, Godot WASM 메모리 부족, 고도 웹게임 용량 줄이기
 - 고도 SQLite 웹, GDExtension 웹 빌드, 고도 웹게임 광고 애드센스, 고도 사파리 아이폰 웹
 - 고도 ARM64, 애플 실리콘 고도
