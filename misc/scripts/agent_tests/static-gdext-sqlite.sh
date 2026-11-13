@@ -27,11 +27,12 @@ else
 	cpp_lib="$(ls godot-cpp/bin/libgodot-cpp.web.template_release.wasm32*.a | grep nothreads | head -1)"
 fi
 echo "godot-cpp: $cpp_lib"
-(cd "$work" && emar x "$src/$cpp_lib")
 objs=$(find src -name "*.o" | sort)
-rm -f "$out"
-emar rcs "$out" $objs "$work"/*.o
+# godot-cpp 아카이브에 같은 이름 멤버가 있어 풀면 덮어씀 → 복사 후 확장 오브젝트를 덧붙임
 rm -rf "$work"
+cp "$cpp_lib" "$out"
+emar q "$out" $objs
+emranlib "$out"
 syms="$(emnm "$out" 2>/dev/null || true)"
 grep -E "[TtW] sqlite_library_init$" <<<"$syms" || { echo "✘ sqlite_library_init 없음"; echo "$objs"; exit 1; }
 ls -la "$out"
