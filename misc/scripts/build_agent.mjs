@@ -100,7 +100,7 @@ createServer(async (req, res) => {
 		const bundle = join(dir, "src.bundle");
 		await new Promise((done) => req.pipe(createWriteStream(bundle)).on("finish", done));
 		const sha = (url.searchParams.get("sha") || "").replace(/[^0-9a-f]/g, "");
-		const args = (url.searchParams.get("args") || "").replace(/[^\w=.,+\- ]/g, "");
+		const args = (url.searchParams.get("args") || "").replace(/[^\w=.,+\-:/~@ ]/g, ""); // 경로·static_gdextensions(lib.a:entry)·패키지@버전
 		// 검사 = 저장소의 misc/scripts/agent_tests/<이름>.sh 만 (목록 밖 명령 실행 안 함)
 		const tests = (url.searchParams.get("test") || "").split(",").map((t) => t.replace(/[^a-z0-9-]/g, "")).filter(Boolean);
 		const release = (url.searchParams.get("release") || "").replace(/[^a-z-]/g, "");
