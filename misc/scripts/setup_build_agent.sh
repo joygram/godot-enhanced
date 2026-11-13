@@ -85,6 +85,8 @@ NODE_BIN="$(command -v node)"
 	printf 'BUILD_AGENT_HOST=%q\n' "$BIND"
 	printf 'BUILD_AGENT_PRE=%q\n' "$PRE"
 	printf 'PATH=%q\n' "$PATH"
+	# 서비스는 로그인 키링에 접근 못 함 → gh 토큰을 직접 전달 (릴리스 업로드용)
+	if have gh && gh auth token >/dev/null 2>&1; then printf 'GH_TOKEN=%q\n' "$(gh auth token)"; fi
 } > "$CONF_DIR/agent.env"
 chmod 600 "$CONF_DIR/agent.env"
 RUNNER="$CONF_DIR/run-agent.sh"
