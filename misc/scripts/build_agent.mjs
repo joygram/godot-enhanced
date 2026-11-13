@@ -74,7 +74,10 @@ createServer(async (req, res) => {
 		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
 		const fetchBundle = statSync(bundle).size > 0 ? `git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && ` : "";
 		// 웹 빌드: ~/emsdk 있으면 자동 활성화
-		const emsdk = /platform=web/.test(args) && existsSync(join(homedir(), "emsdk", "emsdk_env.sh")) ? `source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && ` : "";
+		// (macOS 기본 python 3.9 → brew python@3.12 있으면 EMSDK_PYTHON 지정)
+		const emsdk = /platform=web/.test(args) && existsSync(join(homedir(), "emsdk", "emsdk_env.sh"))
+			? `{ command -v brew >/dev/null && [ -x "$(brew --prefix python@3.12 2>/dev/null)/bin/python3.12" ] && export EMSDK_PYTHON="$(brew --prefix python@3.12)/bin/python3.12"; true; } && source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && `
+			: "";
 		const build = args ? ` && ${pre}${emsdk}scons ${args} -j${jobs}` : "";
 		let code = await sh(`git fetch -q origin && ${fetchBundle}git checkout -q -f ${sha} && touch "${dir}/.start"${build}`, log);
 		const files = code === 0 && args
