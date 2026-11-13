@@ -82,7 +82,8 @@ def configure(env, env_mono):
 
         # Mono components.
         add_mono_component(env, "debugger", mono_runtime_path)
-        add_mono_component(env, "diagnostics_tracing", mono_runtime_path)
+        # Single-threaded runtime pack: the real component needs the browser EventPipe profiler (not linked) → stub.
+        add_mono_component(env, "diagnostics_tracing", mono_runtime_path, is_stub=not env["threads"])
         add_mono_component(env, "hot_reload", mono_runtime_path)
         add_mono_component(env, "marshal-ilgen", mono_runtime_path)
 
