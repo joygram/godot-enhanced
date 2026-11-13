@@ -105,6 +105,9 @@ def configure(env, env_mono):
         env_thirdparty.Append(CPPDEFINES=["GEN_PINVOKE"])
         if env["dlink_enabled"]:
             env_thirdparty.Append(CPPDEFINES=["WASM_SUPPORTS_DLOPEN"])
+            # The runtime pack's runtime.c calls wasm_dl_is_pinvoke_tables, pinvoke.c defines
+            # wasm_dl_is_pinvoke_table (only reached with dlopen support).
+            env_thirdparty.Append(CPPDEFINES=[("wasm_dl_is_pinvoke_tables", "wasm_dl_is_pinvoke_table")])
         env_thirdparty.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "wasm"))
         # The target framework is set in one place, GetRuntimePack.csproj. Game projects must target the same one.
         with open(os.path.join(get_runtime_pack_project_path, "GetRuntimePack.csproj"), encoding="utf-8") as f:
