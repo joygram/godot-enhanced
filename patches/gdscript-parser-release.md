@@ -37,7 +37,7 @@ Built in two steps; each step was shipped as a web template via GitHub Actions i
 
 - Syntax trees freed after the outermost reload instead of living until cache clear.
 - Dependency chains no longer stack every tree at once → lower peak static memory during boot compile.
-- Script behaviour unchanged; compile errors of depended scripts still reported.
+- Script behavior unchanged; compile errors of depended scripts still reported.
 - No published benchmark numbers yet. Measure on your project (below).
 
 ## Measure
@@ -65,7 +65,7 @@ scons platform=web target=template_release dlink_enabled=yes threads=no
 
 ## Limits
 
-- Used with web export templates. Editor hot-reload behaviour: unverified.
+- Used with web export templates. Editor hot-reload behavior: unverified.
 - Tested on 4.7.2 only.
 
 ## 한국어
