@@ -18,6 +18,7 @@ const agentsFile = join(homedir(), ".config", "godot-enhanced", "agents.json");
 const agents = existsSync(agentsFile) ? JSON.parse(readFileSync(agentsFile, "utf8")) : {};
 const token = agents[host] || process.env.BUILD_AGENT_TOKEN;
 if (!host || rest.length === 0 || !token) {
+	// 예) ... b1-w01 platform=linuxbsd target=editor --test smoke-editor --release editor
 	console.error("사용: BUILD_AGENT_TOKEN=<토큰> node misc/scripts/remote_build.mjs <host> <scons 인자...> | --resume <job>");
 	process.exit(2);
 }
@@ -40,6 +41,8 @@ async function download(result) {
 		writeFileSync(join(local, f), Buffer.from(await r.arrayBuffer()));
 	}
 	console.log(`[remote-build] ✔ ${result.files.length}개 → bin/remote/${host}/\n  ${result.files.join("\n  ")}`);
+	if (result.checks && Object.keys(result.checks).length) console.log(`[remote-build] 검사: ${Object.entries(result.checks).map(([k, v]) => `${k}=${v}`).join(", ")}`);
+	if (result.release) console.log(`[remote-build] 릴리스 업로드: ${result.release}`);
 }
 
 // 끊긴 빌드 이어 받기
@@ -65,9 +68,14 @@ if (!pushed) {
 	body = readFileSync(bundle);
 	rmSync(bundle);
 }
+// --test a,b (misc/scripts/agent_tests/<이름>.sh), --release <kind> (검사 통과 시 에이전트가 GitHub 릴리스 업로드)
+const opt = (name) => { const i = rest.indexOf(name); if (i < 0) return ""; const v = rest[i + 1] ?? ""; rest.splice(i, 2); return v; };
+const test = opt("--test");
+const release = opt("--release");
 const sconsArgs = rest;
-console.log(`[remote-build] ${host} ← ${sha.slice(0, 10)} (${pushed ? "푸시됨" : `미푸시 묶음 ${(body.length / 1048576).toFixed(1)}MB`}) : scons ${sconsArgs.join(" ")}`);
-const res = await fetch(`${base}/build?sha=${sha}&args=${encodeURIComponent(sconsArgs.join(" "))}`, { method: "POST", headers: auth, body });
+console.log(`[remote-build] ${host} ← ${sha.slice(0, 10)} (${pushed ? "푸시됨" : `미푸시 묶음 ${(body.length / 1048576).toFixed(1)}MB`}) : scons ${sconsArgs.join(" ") || "(없음)"}${test ? ` → 검사 ${test}` : ""}${release ? ` → 릴리스 ${release}` : ""}`);
+const q = new URLSearchParams({ sha, args: sconsArgs.join(" "), test, release });
+const res = await fetch(`${base}/build?${q}`, { method: "POST", headers: auth, body });
 if (!res.ok) { console.error(`[remote-build] ✘ ${res.status} ${await res.text()}`); process.exit(1); }
 
 // 로그 스트림 → 끝줄 @@FILES. 끊기면 --resume 안내
