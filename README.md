@@ -64,39 +64,65 @@ git cherry-pick 4.7.2-stable..origin/4.7.2-ime
 
 ## 한국어 안내
 
-Godot 4.7.2 공식 소스에 패치 2개를 얹은 빌드. 업스트림 이력 그대로 유지.
+Godot 4.7.2 공식 소스에 패치 두 개를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
 
-- **Windows 한글 IME 패치**: 한글 음절 확정 후 다음 글자 입력 시 커서가 전진하지 않던 문제 수정. 편집기·게임 입력창 공통. → [상세](patches/windows-ime-queued-key.md)
-- **GDScript 파서 해제 패치 (웹/WASM)**: 서로 의존하는 스크립트의 구문 트리가 컴파일 뒤에도 남던 것을 해제. 부팅 컴파일 최고 메모리 감소. → [상세](patches/gdscript-parser-release.md)
-- 사용: `4.7.2-ime` 브랜치 빌드, 또는 `patches/*.patch` 를 4.7.2 소스에 `git apply`.
-- 웹 템플릿: GitHub Actions 빌드 → [Releases](https://github.com/joygram/godot-ime/releases) 의 zip 을 웹 내보내기 커스텀 템플릿으로 지정.
-- 검색어: 고도 한글 입력, 고도 엔진 한글 IME, Godot 한글 깨짐·씹힘, 커서 안 움직임, 고도 웹 빌드 메모리.
+| 패치 | 플랫폼 | 해결하는 문제 |
+|---|---|---|
+| [Windows 한글 IME 패치](patches/windows-ime-queued-key.md) | Windows 편집기·게임 | 한글 음절을 확정한 뒤 다음 글자를 입력하면 커서가 앞으로 가지 않는 문제 |
+| [GDScript 파서 해제 패치](patches/gdscript-parser-release.md) | 전체 (웹/WASM에서 효과 큼) | 서로 참조하는 스크립트의 구문 트리가 컴파일 뒤에도 남아 부팅 때 메모리 최고치가 높아지는 문제 |
 
 ### 브랜치
 
-- `4.7.2-ime` (기본): `4.7.2-stable` (`ed1daf0bf`) + 패치. 패치당 커밋 1개.
-- `master`: 업스트림 `master` 미러, 수정 없음.
-- 업스트림 태그 유지 (`4.7.2-stable` 등).
+- `4.7.2-ime` (기본 브랜치): `4.7.2-stable`(`ed1daf0bf`) 위에 패치를 하나씩 커밋으로 올렸습니다.
+- `master`: 업스트림 `master`를 그대로 옮겨 온 미러입니다.
+- 업스트림 태그(`4.7.2-stable` 등)도 그대로 있습니다.
 
-### 빌드
+### 사용법
 
-- Windows 편집기(MSVC): `python -m SCons platform=windows target=editor arch=x86_64`
-- 웹 템플릿(Emscripten): `scons platform=web target=template_release`
-- 패치 적용: 두 개 모두, 또는 필요한 것 하나씩 따로 가능. 순서 무관.
-  - 둘 다: `git apply patches/godot-4.7.2-windows-ime-queued-key.patch patches/godot-4.7.2-gdscript-parser-release.patch`
-  - 하나씩: 해당 `.patch` 파일만 `git apply`.
+이 브랜치를 바로 빌드하면 됩니다.
 
-### 업스트림 따라가기
+```sh
+git clone --branch 4.7.2-ime --depth 1 https://github.com/joygram/godot-ime.git
+cd godot-ime
+# Windows 편집기 (MSVC)
+python -m SCons platform=windows target=editor arch=x86_64
+# 웹 내보내기 템플릿 (Emscripten)
+scons platform=web target=template_release
+```
 
-- `git remote add upstream https://github.com/godotengine/godot.git` → `git fetch upstream --tags`
-- 새 버전 브랜치 생성: `git checkout -b <버전>-ime <버전>-stable`
-- 패치 이식: `git cherry-pick 4.7.2-stable..origin/4.7.2-ime`
+가지고 있는 Godot 4.7.2 소스에 패치만 적용해도 됩니다. 두 패치를 함께 적용해도 되고, 필요한 것 하나만 적용해도 됩니다. 적용 순서는 상관없습니다.
+
+```sh
+# 둘 다
+git apply patches/godot-4.7.2-windows-ime-queued-key.patch patches/godot-4.7.2-gdscript-parser-release.patch
+# 하나만
+git apply patches/godot-4.7.2-windows-ime-queued-key.patch
+```
+
+### 미리 빌드된 웹 템플릿
+
+- GitHub Actions가 이 브랜치로 웹 내보내기 템플릿을 빌드해 [Releases](https://github.com/joygram/godot-ime/releases)에 올립니다.
+- `godot.web.template_release.wasm32.nothreads.dlink.zip`: GDExtension을 쓰는 프로젝트용
+- `godot.web.template_release.wasm32.nothreads.zip`: 일반 프로젝트용
+- 웹 내보내기 프리셋의 Custom Template → Release에 zip 파일을 지정하면 됩니다.
+- Emscripten 4.0.11로 빌드했습니다. dlink 템플릿을 쓴다면 GDExtension 웹 빌드도 같은 버전이어야 합니다.
+
+### 새 Godot 버전으로 옮기기
+
+```sh
+git remote add upstream https://github.com/godotengine/godot.git
+git fetch upstream --tags
+git checkout -b <새 버전>-ime <새 버전>-stable
+git cherry-pick 4.7.2-stable..origin/4.7.2-ime
+```
 
 ### 상태
 
-- 공식 Godot 빌드 아님. 업스트림 미제출.
-- Godot 4.7.2 에서만 확인. 다른 버전 미검증.
-- 라이선스: Godot 과 동일 MIT.
+- 공식 Godot 빌드가 아니며, 아직 업스트림에 제출하지 않았습니다.
+- Godot 4.7.2에서만 확인했습니다. 다른 버전에서는 검증하지 않았습니다.
+- 라이선스는 Godot과 같은 MIT입니다.
+
+**검색어:** 고도 엔진 한글 입력, Godot 한글 IME, 한글 입력 시 커서 안 움직임, 한글 씹힘, LineEdit·TextEdit 한글, 고도 웹 빌드 메모리, Godot WASM 메모리 부족
 
 ---
 
