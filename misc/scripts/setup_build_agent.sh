@@ -65,23 +65,25 @@ fi
 
 # 4) 토큰·설정
 TOKEN="${BUILD_AGENT_TOKEN:-}"
-[ -n "$TOKEN" ] || [ ! -f "$CONF_DIR/agent.env" ] || TOKEN="$(sed -n 's/^BUILD_AGENT_TOKEN=//p' "$CONF_DIR/agent.env")"
+[ -n "$TOKEN" ] || [ ! -f "$CONF_DIR/agent.env" ] || TOKEN="$(sed -n 's/^BUILD_AGENT_TOKEN=//p' "$CONF_DIR/agent.env" | tr -d "'\"")"
 [ -n "$TOKEN" ] || TOKEN="$(openssl rand -hex 24)"
 BIND="0.0.0.0"; have tailscale && BIND="$(tailscale ip -4 2>/dev/null | head -1 || echo 0.0.0.0)"
 mkdir -p "$CONF_DIR"
-cat > "$CONF_DIR/agent.env" <<EOF
-BUILD_AGENT_TOKEN=$TOKEN
-BUILD_AGENT_PORT=$PORT
-BUILD_AGENT_HOST=$BIND
-BUILD_AGENT_PRE=$PRE
-PATH=$PATH
-EOF
+NODE_BIN="$(command -v node)"
+# 값마다 셸 인용 (PATH 등 공백 포함 경로 대비)
+{
+	printf 'BUILD_AGENT_TOKEN=%q\n' "$TOKEN"
+	printf 'BUILD_AGENT_PORT=%q\n' "$PORT"
+	printf 'BUILD_AGENT_HOST=%q\n' "$BIND"
+	printf 'BUILD_AGENT_PRE=%q\n' "$PRE"
+	printf 'PATH=%q\n' "$PATH"
+} > "$CONF_DIR/agent.env"
 chmod 600 "$CONF_DIR/agent.env"
 RUNNER="$CONF_DIR/run-agent.sh"
 cat > "$RUNNER" <<EOF
 #!/usr/bin/env bash
 set -a; source "$CONF_DIR/agent.env"; set +a
-cd "$REPO_DIR" && exec node misc/scripts/build_agent.mjs
+cd "$REPO_DIR" && exec "$NODE_BIN" misc/scripts/build_agent.mjs
 EOF
 chmod +x "$RUNNER"
 
