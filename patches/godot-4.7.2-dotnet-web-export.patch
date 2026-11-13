@@ -1,5 +1,5 @@
 diff --git a/modules/mono/build_scripts/mono_configure.py b/modules/mono/build_scripts/mono_configure.py
-index 98c50dcc22..1bc2002f0d 100644
+index 98c50dcc22..4c5b1bffa0 100644
 --- a/modules/mono/build_scripts/mono_configure.py
 +++ b/modules/mono/build_scripts/mono_configure.py
 @@ -1,3 +1,10 @@
@@ -13,7 +13,7 @@ index 98c50dcc22..1bc2002f0d 100644
  def is_desktop(platform):
      return platform in ["windows", "macos", "linuxbsd"]
  
-@@ -11,12 +18,165 @@ def module_supports_tools_on(platform):
+@@ -11,12 +18,167 @@ def module_supports_tools_on(platform):
  
  
  def configure(env, env_mono):
@@ -59,9 +59,11 @@ index 98c50dcc22..1bc2002f0d 100644
 +            shutil.copytree(mono_runtime_path, mono_runtime_copy_path)
 +            mono_runtime_path = mono_runtime_copy_path
 +
-+        # The default Mono runtime uses WASM exceptions.
-+        env.Append(CCFLAGS=["-fwasm-exceptions"])
-+        env.Append(LINKFLAGS=["-fwasm-exceptions"])
++        # The default Mono runtime uses WASM exceptions. The .NET 11 runtime pack is compiled with the new
++        # (exnref) exception handling (-s WASM_LEGACY_EXCEPTIONS=0); all objects in the template must use the
++        # same kind, otherwise wasm-opt cannot parse the linked module.
++        env.Append(CCFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
++        env.Append(LINKFLAGS=["-fwasm-exceptions", "-sWASM_LEGACY_EXCEPTIONS=0"])
 +
 +        env_mono.Prepend(CPPPATH=os.path.join(mono_runtime_path, "include", "mono-2.0"))
 +
