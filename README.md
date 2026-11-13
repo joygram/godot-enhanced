@@ -36,10 +36,41 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Drop starts with the first run on the patched editor (10:07, release `88690556f4`)
 
+## 🧩 0.1.2 — GDExtensions in C# web, 3 C# web crashes fixed
+
+> C# web games can now use GDExtensions (e.g. SQLite). Not possible with dlink: the .NET runtime is not PIC.
+
+| C# web crash (any C# web game) | Fix |
+|---|---|
+| `Variant.As*()`, `Call()` → `aot-runtime-wasm.c:188` | All engine call signatures in the interpreter table |
+| `await ToSignal` → `function signature mismatch` | `Error` interop returns 64-bit, matching C# |
+| Single-threaded export picked the threaded runtime | Thread choice set early (`Browser.props`) |
+
+| SQLite on the web (rpg2d DB, 80k rows, Chrome) | Heap after | DB read | Download |
+|---|---|---|---|
+| GDScript + GDExtension (dlink) | 198.8 MB | 386 ms | 77.7 MB |
+| **GDScript + static link** | 198.8 MB | **292 ms (−24%)** | **67.8 MB (−9.8)** |
+| **C# + static link** (new) | 238.5 MB | **290 ms** | 77.8 MB |
+| C# + `Microsoft.Data.Sqlite` | 194.3 MB | 2,228 ms | 77.7 MB |
+
+| 200 classes, same test (Chrome) | GDScript | C# |
+|---|---|---|
+| WASM heap | 38.4 MB | 55.4 MB (+17, .NET runtime) |
+| Integer math | 69.6 ms | **23.2 ms (3×)** |
+| Object / collections | 109.3 / 57.3 ms | 90.6 / 45.6 ms |
+
+- `static_gdextensions=sqlite`: GDExtension linked into the web template, source unchanged
+- Prebuilt `.a` (release/debug × threads/nothreads) on release `static-gdext-emsdk6.0.2`, fetched by name
+- `mono_wasm_native_packages=Id/Version`: NuGet native libraries (e.g. `e_sqlite3`) in the C# template
+- C# web templates: threads and **nothreads** (no COOP / COEP needed)
+- Shared build cache: Mac reused 1,932 Linux-built objects, compiled 14, 1 min 18 s
+- Remote build agents (Linux, macOS): build → test (web memory, Safari WebKit) → release, no SSH
+- All numbers and conditions: [BENCHMARKS.md](BENCHMARKS.md)
+
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.1`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.1`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.2`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.2`
 
 **Keywords:** Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, Windows IME composition, CJK input, LineEdit / TextEdit caret, Godot web export memory, WASM heap, GDScript parser memory, HTML5 export out of memory, Godot C# web export, Godot .NET web export, C# WebAssembly, Mono WASM, Godot mono HTML5.
 
@@ -85,14 +116,16 @@ Apply all three (as above), or only the ones you need — each patch also applie
 - Assets: `godot.web.template_release.wasm32.nothreads.dlink.zip` (GDExtension support), `godot.web.template_release.wasm32.nothreads.zip`.
 - Use: Web export preset → Custom Template → Release → the zip.
 - Emscripten 6.0.2 (GDScript and C# alike). With dlink, your GDExtension web builds must use the same version.
-- These are the GDScript templates (no threads). C# web projects need the separate threaded `.mono` templates below.
+- These are the GDScript templates (no threads). C# web projects need the separate `.mono` templates below.
+- GDExtension without dlink: build the template with `static_gdextensions=<name>` (list: [misc/static_gdextensions.json](misc/static_gdextensions.json)).
 
 ## C# (.NET) web export
 
 - Targets **.NET 11** (`net11.0`); game projects must use the same framework as the templates. .NET 9 support ended on 2026-11-10.
 - Needs the C# editor and `.mono` web templates built from this branch with `module_mono_enabled=yes`. How: [patches/dotnet-web-export.md](patches/dotnet-web-export.md).
 - Releases: workflow `enhanced_dotnet_release.yml` publishes them to [Releases](https://github.com/joygram/godot-enhanced/releases) once it has run successfully. Not published yet.
-- No GDExtension in C# web builds. Threaded template: host with COOP / COEP headers.
+- GDExtension: only statically linked (`static_gdextensions=<name>`), dlink is not possible.
+- Threads follow the export preset's Thread Support. Threaded template: host with COOP / COEP headers.
 - Not only C++: the patch also changes C#, MSBuild and SCons files. The build needs the .NET 11 SDK and the `wasm-tools` workload, and ships `GodotSharp` assemblies and NuGet packages next to the editor.
 
 ## Keeping up with upstream
@@ -157,8 +190,39 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 
 - 패치 에디터(릴리스 `88690556f4`) 첫 실행(10:07)부터 하락
 
+### 🧩 0.1.2 — C# 웹에서 GDExtension, C# 웹 크래시 3종 수정
+
+> 이제 C# 웹 게임도 GDExtension(예: SQLite)을 쓸 수 있습니다. .NET 런타임이 PIC가 아니라 dlink로는 불가능했습니다.
+
+| C# 웹 크래시 (모든 C# 웹 게임) | 수정 |
+|---|---|
+| `Variant.As*()`, `Call()` → `aot-runtime-wasm.c:188` | 엔진 호출 서명 전부를 인터프리터 표에 |
+| `await ToSignal` → `function signature mismatch` | `Error` 반환을 C#과 같은 64비트로 |
+| 단일 스레드 내보내기가 멀티스레드 런타임 선택 | 스레드 선택을 앞 단계(`Browser.props`)에서 |
+
+| 웹 SQLite (rpg2d DB, 8만 행, Chrome) | 처리 후 힙 | DB 읽기 | 다운로드 |
+|---|---|---|---|
+| GDScript + GDExtension (dlink) | 198.8 MB | 386 ms | 77.7 MB |
+| **GDScript + 정적 링크** | 198.8 MB | **292 ms (−24%)** | **67.8 MB (−9.8)** |
+| **C# + 정적 링크** (신규) | 238.5 MB | **290 ms** | 77.8 MB |
+| C# + `Microsoft.Data.Sqlite` | 194.3 MB | 2,228 ms | 77.7 MB |
+
+| 클래스 200개, 같은 테스트 (Chrome) | GDScript | C# |
+|---|---|---|
+| WASM 힙 | 38.4 MB | 55.4 MB (+17, .NET 런타임) |
+| 정수 연산 | 69.6 ms | **23.2 ms (3배)** |
+| 객체 / 컬렉션 | 109.3 / 57.3 ms | 90.6 / 45.6 ms |
+
+- `static_gdextensions=sqlite`: GDExtension 소스 수정 없이 웹 템플릿에 정적 링크
+- 미리 빌드한 `.a`(release/debug × threads/nothreads)는 릴리스 `static-gdext-emsdk6.0.2`, 이름만으로 받음
+- `mono_wasm_native_packages=Id/Version`: NuGet 네이티브 라이브러리(예: `e_sqlite3`)를 C# 템플릿에
+- C# 웹 템플릿: threads·**nothreads** 둘 다 (nothreads는 COOP / COEP 불필요)
+- 빌드 캐시 공유: Mac이 Linux 빌드 결과 1,932개 재사용, 14개만 컴파일, 1분 18초
+- 원격 빌드 에이전트(Linux, macOS): 빌드 → 검사(웹 메모리, Safari WebKit) → 릴리스, SSH 없음
+- 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
+
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.1`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.1`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.2`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.2`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
@@ -202,14 +266,16 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 - `godot.web.template_release.wasm32.nothreads.zip`: 일반 프로젝트용
 - 웹 내보내기 프리셋의 Custom Template → Release에 zip 파일을 지정하면 됩니다.
 - Emscripten 6.0.2로 빌드합니다(GDScript·C# 공통). dlink 템플릿을 쓴다면 GDExtension 웹 빌드도 같은 버전이어야 합니다.
-- 위 템플릿은 GDScript용(스레드 없음)입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿(스레드 사용)이 필요합니다.
+- 위 템플릿은 GDScript용(스레드 없음)입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿이 필요합니다.
+- dlink 없이 GDExtension: 템플릿을 `static_gdextensions=<이름>`으로 빌드 (목록: [misc/static_gdextensions.json](misc/static_gdextensions.json))
 
 ### C#(.NET) 웹 내보내기
 
 - **.NET 11**(`net11.0`) 대상입니다. 게임 프로젝트도 템플릿과 같은 버전이어야 합니다. .NET 9는 2026-11-10에 지원이 끝났습니다.
 - `module_mono_enabled=yes`로 이 브랜치에서 빌드한 C# 편집기와 `.mono` 웹 템플릿이 필요합니다. 방법은 [patches/dotnet-web-export.md](patches/dotnet-web-export.md)에 있습니다.
 - 결과물은 `enhanced_dotnet_release.yml` 워크플로가 성공하면 [Releases](https://github.com/joygram/godot-enhanced/releases)에 올라옵니다. 아직 올라와 있지 않습니다.
-- C# 웹 빌드에서는 GDExtension을 쓸 수 없습니다. 스레드를 쓰는 템플릿이라 호스팅에서 COOP / COEP 헤더가 필요합니다.
+- GDExtension은 정적 링크(`static_gdextensions=<이름>`)로만 쓸 수 있습니다. dlink는 불가능합니다.
+- 스레드는 내보내기 프리셋의 Thread Support를 따릅니다. 스레드 템플릿은 호스팅에 COOP / COEP 헤더가 필요합니다.
 - C++만 바뀌는 것이 아닙니다. C#, MSBuild, SCons 파일도 바뀌어서 빌드에 .NET 11 SDK와 `wasm-tools` 워크로드가 필요하고, 편집기와 함께 `GodotSharp` 어셈블리·NuGet 패키지가 배포됩니다.
 
 ### 새 Godot 버전으로 옮기기
