@@ -21,6 +21,8 @@ nuget_dir="$HOME/.nuget/NuGet/nuget"
 echo "Copying export templates to '$template_dir'..."
 mkdir -p "$template_dir"
 cp -f "$here/web_release.zip" "$here/web_debug.zip" "$template_dir/"
+# Single-threaded templates (Thread Support off: no COOP / COEP headers needed)
+for f in web_nothreads_release.zip web_nothreads_debug.zip; do [[ -e "$here/$f" ]] && cp -f "$here/$f" "$template_dir/"; done
 
 echo "Copying NuGet packages to '$nuget_dir'..."
 mkdir -p "$nuget_dir"
