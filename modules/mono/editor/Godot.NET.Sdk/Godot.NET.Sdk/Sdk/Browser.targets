@@ -11,7 +11,7 @@
   <!-- GodotWebThreads: from the Web export preset's "Thread Support" (GodotTools passes it). Default = threads. -->
   <PropertyGroup>
     <GodotWebThreads Condition="'$(GodotWebThreads)' == ''">true</GodotWebThreads>
-    <WasmEnableThreads>$(GodotWebThreads)</WasmEnableThreads>
+    <WasmEnableThreads Condition="'$(WasmEnableThreads)' == ''">$(GodotWebThreads)</WasmEnableThreads>
     <WasmEnableExceptionHandling>true</WasmEnableExceptionHandling>
     <WasmEnableSIMD>true</WasmEnableSIMD>
   </PropertyGroup>
@@ -21,8 +21,16 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <!--
+    Trimming on by default for the web (smaller download): unused framework and engine API code is removed.
+    The game assembly stays whole (Godot finds scripts by reflection). GodotSharp is trimmed too
+    (YangVillage: GodotSharp.dll 5.4 → 2.6 MB, runs and saves). A project that needs more reflection
+    sets PublishTrimmed=false or adds TrimmerRootAssembly items.
+  -->
+  <PropertyGroup>
+    <PublishTrimmed Condition="'$(PublishTrimmed)' == ''">true</PublishTrimmed>
+  </PropertyGroup>
   <ItemGroup>
-    <TrimmerRootAssembly Include="GodotSharp" />
     <TrimmerRootAssembly Include="$(TargetName)" />
   </ItemGroup>
 </Project>
