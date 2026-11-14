@@ -137,6 +137,12 @@ jobs:
             flags: optimize=speed lto=full
           - target: template_debug
             flags: optimize=speed lto=thin
+          - target: template_release
+            flags: optimize=speed lto=full threads=no
+            suffix: .nothreads
+          - target: template_debug
+            flags: optimize=speed lto=thin threads=no
+            suffix: .nothreads
     steps:
       - uses: actions/checkout@v4
         with:
@@ -169,10 +175,10 @@ jobs:
         run: scons platform=web target=${{ matrix.target }} module_mono_enabled=yes ${{ matrix.flags }} ccflags="-DNDEBUG" linkflags="-sMALLOC=mimalloc"
       - uses: actions/upload-artifact@v4
         with:
-          name: web-${{ matrix.target }}
-          path: bin/godot.web.${{ matrix.target }}.wasm32.mono.zip
+          name: web-${{ matrix.target }}${{ matrix.suffix }}
+          path: bin/godot.web.${{ matrix.target }}.wasm32${{ matrix.suffix }}.mono.zip
       - uses: actions/upload-artifact@v4
-        if: matrix.target == 'template_release'
+        if: matrix.target == 'template_release' && matrix.suffix == ''
         with:
           name: csharp-assemblies
           path: |
@@ -198,6 +204,8 @@ jobs:
           mkdir -p "$common/nuget"
           cp art/web-template_release/godot.web.template_release.wasm32.mono.zip "$common/web_release.zip"
           cp art/web-template_debug/godot.web.template_debug.wasm32.mono.zip "$common/web_debug.zip"
+          cp art/web-template_release.nothreads/godot.web.template_release.wasm32.nothreads.mono.zip "$common/web_nothreads_release.zip"
+          cp art/web-template_debug.nothreads/godot.web.template_debug.wasm32.nothreads.mono.zip "$common/web_nothreads_debug.zip"
           cp art/csharp-assemblies/nuget/* "$common/nuget/"
           cp "$kit"/Program.cs "$kit"/global.json "$kit"/README.txt "$kit"/install.sh "$kit"/install.bat "$common/"
 
@@ -220,10 +228,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ needs.prepare.outputs.tag }}"
-          gh release create "$tag" --target "${{ needs.prepare.outputs.sha }}" \
+          # The release may already exist (web templates uploaded by a build agent).
+          gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$tag" -R "$GITHUB_REPOSITORY" --target "${{ needs.prepare.outputs.sha }}" \
             --title "C# web export kit ${GODOT_VERSION} (godot-enhanced)" \
-            --notes "Experimental C# (.NET) web export for Godot ${GODOT_VERSION} (patch: patches/dotnet-web-export.md). One zip per platform: editor + GodotSharp + NuGet packages + web templates (threaded) + install script. Extract, run the install script, set TargetFramework net11.0 (.NET 11 SDK), copy Program.cs, export for the web. No GDExtension in C# web builds. Based on work by Raul Santos, ComplexRobot and Dom Finn." \
-            godot-*.zip
+            --notes "C# (.NET 11) web export for Godot ${GODOT_VERSION}. One zip per platform: C# editor + GodotSharp + NuGet packages + web templates (threads and nothreads) + install script. Extract, run the install script, set TargetFramework net11.0, copy Program.cs, export for the web. GDExtension: static link only (static_gdextensions). Based on work by Raul Santos, ComplexRobot and Dom Finn."
+          gh release upload "$tag" -R "$GITHUB_REPOSITORY" godot-*.zip --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: kit-common
@@ -258,4 +267,4 @@ jobs:
       - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.prepare.outputs.tag }}" godot-*.zip --clobber
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" -R "$GITHUB_REPOSITORY" godot-*.zip --clobber
