@@ -164,6 +164,61 @@
 | scons 시간 | 1분 18초 |
 - 새 옵션 `mono_wasm_native_packages="Id/Version,..."`: NuGet 네이티브 라이브러리 링크
 
+## 웹 최적화 기준 (iPhone Safari 기준, 2026-11-14)
+
+### 확인된 수치
+
+| 항목 | 값 | 출처 |
+|---|---|---|
+| 초기 힙 | 32MB (`initial_memory`) | `platform/web/detect.py` |
+| 힙 증가 | 20%씩, 한 번에 최대 96MB | Emscripten 기본값 (`GEOMETRIC_STEP`·`CAP`) |
+| 최대 힙 | 2GB (`MAXIMUM_MEMORY` 미지정 → 기본값) | Emscripten 기본값 |
+| 힙 축소 | 없음 → 최고점 = 점유량 | wasm 사양 |
+| iOS 탭 한도 | 공식 값 없음, 초과 시 jetsam 종료 | onnxruntime #33793 |
+| iPhone 16 Pro Max (8GB), 27.2 | 탭 한도 2,048MB, WebGPU 포함 | onnxruntime #33793 |
+| iPhone SE 3 (4GB), 26.2 | JS 배열 1억 개 근처 사망, 실점유 미상 | lapcat 2026-01 |
+| iPad 8세대 (3GB), 26.2 | 같은 시험 2억 개 근처 사망 | lapcat 2026-01 |
+| iPhone 13 Pro, 16.2 | 최대 2GB 예약 실패, 256MB 로 시작 성공 | Godot #70621 |
+| Godot Safari 재로드 | 오디오 워크릿 누수, 4.5-beta2 수정 | Godot #107948 |
+| iOS 18.4 저RAM | wasm 12MB 이상 컴파일 사망 보고 | Unity 포럼, 원문 미확인 |
+| 새로고침 누적 | 약 7회 후 OOM 보고 | emscripten-discuss, 원문 미확인 |
+
+### 예산
+
+| 항목 | 목표 | 상한 | 지금 |
+|---|---|---|---|
+| wasm 힙 최고점 | 150MB | 200MB | 198.8 / 238.5 (SQLite 시험) |
+| 부팅 직후 힙 | 70MB | 100MB | 38.4 GD / 55.4 C# |
+| wasm 파일 | 40MB | 45MB | 36.4 GD / 39.4 C# |
+| 다운로드 합계 | 50MB | 70MB | 67.8 ~ 77.8 |
+| 플레이 중 힙 증가 | 0 | — | 미측정 |
+
+- 목표·상한 = 근거 없는 임시값, 실기기 측정 후 확정
+- 확인된 한도는 8GB 기기 2,048MB 하나뿐 → 4GB·3GB 기기 한도 미측정
+
+### 판정 규칙
+
+- 힙: 최고점으로 판정
+- 계단 하나 안 차이 = 동일
+- 속도: 3회 이상, 1회 값은 참고만
+- 다운로드: 파일 크기 → 1회로 판정
+- 최종 판정: iPhone 실기기 + Safari Web Inspector
+
+### 순서
+
+1. 최고점 낮추기: 나눠 로드, 원본 버퍼 즉시 해제, 행 표현 한 벌
+2. 붙잡기 확인: 로드 후·GC 후 정적 메모리 비교 (C# 래퍼, DB 원본, SQLite 캐시)
+3. `MAXIMUM_MEMORY` 낮추기: 2GB → 512MB 후보, 예약 실패 회피
+4. 모듈 정리: 서버·싱글톤 제거 → 부팅 힙, 코드 제거 → wasm 크기
+5. AOT: 속도 병목 확인 후 부분 AOT만
+
+### 미검증
+
+- iPhone 실기기 한도 (SE·저RAM)
+- 새로고침 누적 누수
+- threads 템플릿 공유 메모리 예약 크기
+- 18.4 컴파일 단계 사망 재현 (wasm 36~54MB 해당)
+
 ## 남은 것
 
 - AOT 실행 오류 해결 후 속도 측정, 또는 보류
