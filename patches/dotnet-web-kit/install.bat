@@ -8,6 +8,9 @@ echo Copying export templates to "%TEMPLATE_FOLDER%"...
 md "%TEMPLATE_FOLDER%" 2>nul
 copy /y "%~dp0web_release.zip" "%TEMPLATE_FOLDER%" >nul
 copy /y "%~dp0web_debug.zip" "%TEMPLATE_FOLDER%" >nul
+rem Single-threaded templates (Thread Support off: no COOP / COEP headers needed)
+if exist "%~dp0web_nothreads_release.zip" copy /y "%~dp0web_nothreads_release.zip" "%TEMPLATE_FOLDER%" >nul
+if exist "%~dp0web_nothreads_debug.zip" copy /y "%~dp0web_nothreads_debug.zip" "%TEMPLATE_FOLDER%" >nul
 
 echo Copying NuGet packages to "%NUGET_FOLDER%"...
 md "%NUGET_FOLDER%" 2>nul
