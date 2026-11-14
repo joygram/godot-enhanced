@@ -137,7 +137,10 @@ createServer(async (req, res) => {
 		const useCache = platform && !/cache_path=/.test(args) && process.env.BUILD_AGENT_NO_CACHE !== "1";
 		const cacheFetch = useCache ? `{ bash misc/scripts/engine_cache.sh fetch ${platform} || true; } && ` : "";
 		const cacheArg = useCache ? ` cache_path=${join(process.env.GODOT_CACHE_DIR || join(homedir(), "godot-cache"), platform)}` : "";
-		if (code === 0 && args) code = await step("빌드", () => sh(`${pre}${emsdk}${cacheFetch}scons ${args}${cacheArg} -j${jobs}`, log, Number(process.env.BUILD_AGENT_BUILD_TIMEOUT || 7200)));
+		// 릴리스 작업: 이미 최신이라 산출물이 안 생기는 경우 방지 → 이 플랫폼·대상의 bin 산출물을 지우고 다시 링크
+		const target = args.match(/target=(\w+)/)?.[1];
+		const relink = release && platform && target ? `rm -f bin/godot.${platform}.${target}.* && ` : "";
+		if (code === 0 && args) code = await step("빌드", () => sh(`${pre}${emsdk}${cacheFetch}${relink}scons ${args}${cacheArg} -j${jobs}`, log, Number(process.env.BUILD_AGENT_BUILD_TIMEOUT || 7200)));
 		const files = code === 0 && args
 			? readdirSync(join(root, "bin")).filter((f) => { const p = join(root, "bin", f); return statSync(p).isFile() && statSync(p).mtimeMs > statSync(join(dir, ".start")).mtimeMs; })
 			: [];
