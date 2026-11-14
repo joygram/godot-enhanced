@@ -23,11 +23,15 @@ exe=$(ls bin/godot.$plat.editor.$arch.mono$([ "$os" = windows ] && echo .console
 [ -n "$exe" ] || { echo "✘ C# 편집기 없음: bin/godot.$plat.editor.$arch.mono*"; exit 1; }
 "$exe" --headless --version
 
-echo "── glue"
-"$exe" --headless --quit --generate-mono-glue modules/mono/glue
-echo "── C# 어셈블리·NuGet"
-rm -rf bin/nuget
-"$py" modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget
+if [ -n "${SKIP_ASSEMBLIES:-}" ] && ls bin/nuget/*.nupkg >/dev/null 2>&1; then
+	echo "── glue·어셈블리 생략 (SKIP_ASSEMBLIES, 기존 bin/nuget)"
+else
+	echo "── glue"
+	"$exe" --headless --quit --generate-mono-glue modules/mono/glue
+	echo "── C# 어셈블리·NuGet"
+	rm -rf bin/nuget
+	"$py" modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget
+fi
 
 work="$(mktemp -d)"
 name="godot-$version-enhanced.dotnet-web.$os-$arch"
@@ -37,7 +41,12 @@ cp patches/dotnet-web-kit/{Program.cs,global.json,README.txt,install.sh,install.
 echo "── 웹 템플릿 ($tag)"
 for pair in "godot.web.template_release.wasm32.mono.zip:web_release.zip" "godot.web.template_release.wasm32.nothreads.mono.zip:web_nothreads_release.zip" \
 	"godot.web.template_debug.wasm32.mono.zip:web_debug.zip" "godot.web.template_debug.wasm32.nothreads.mono.zip:web_nothreads_debug.zip"; do
-	gh release download "$tag" -R "$repo" -p "${pair%%:*}" -D "$work" --clobber 2>/dev/null && mv "$work/${pair%%:*}" "$d/${pair##*:}" || echo "  (없음: ${pair%%:*})"
+	ok=""
+	for try in 1 2 3 4; do
+		if gh release download "$tag" -R "$repo" -p "${pair%%:*}" -D "$work" --clobber 2>/dev/null; then ok=1; break; fi
+		sleep 5 # 네트워크(TLS) 일시 오류 재시도
+	done
+	if [ -n "$ok" ]; then mv "$work/${pair%%:*}" "$d/${pair##*:}"; echo "  ${pair##*:}"; else echo "  (없음: ${pair%%:*})"; fi
 done
 [ -f "$d/web_release.zip" ] || { echo "✘ 웹 릴리스 템플릿 없음 ($tag)"; exit 1; }
 # debug 템플릿이 없으면 release 로 대신 (설치 스크립트가 둘 다 요구)
