@@ -19,8 +19,11 @@ for f in "$JOB_DIR"/*; do
 		*.zip) cp "$f" "$out/" ;;
 		godot.web.*|godot.side.web.*) continue ;; # 웹은 템플릿 zip 만 (js·wasm 낱개 제외)
 		godot.*editor*|godot.*template*)
-			case "$name" in *.o|*.a|*.lib|*.exp|*.pdb) continue ;; esac
-			(cd "$JOB_DIR" && zip -q -9 "$out/godot-$version-$name.zip" "$name") ;;
+			case "$name" in *.o|*.a|*.lib|*.exp|*.pdb|*.console.exe) continue ;; esac
+			# CI 와 같은 이름: godot-<버전>-enhanced.<platform>.<target>.<arch>.zip (Windows 는 .console.exe 도 함께)
+			base="${name%.exe}"; base="${base#godot.}"
+			files=("$name"); [ -f "$JOB_DIR/${name%.exe}.console.exe" ] && files+=("${name%.exe}.console.exe")
+			(cd "$JOB_DIR" && zip -q -9 "$out/godot-$version-enhanced.$base.zip" "${files[@]}") ;;
 	esac
 done
 ls "$out"/* >/dev/null 2>&1 || { echo "[release] 올릴 산출물 없음"; exit 1; }
