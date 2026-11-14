@@ -17,7 +17,7 @@ for f in "$JOB_DIR"/*; do
 	name=$(basename "$f")
 	case "$name" in
 		*.zip) cp "$f" "$out/" ;;
-		godot.web.*) continue ;; # 웹은 템플릿 zip 만 (js·wasm 낱개 제외)
+		godot.web.*|godot.side.web.*) continue ;; # 웹은 템플릿 zip 만 (js·wasm 낱개 제외)
 		godot.*editor*|godot.*template*)
 			case "$name" in *.o|*.a|*.lib|*.exp|*.pdb) continue ;; esac
 			(cd "$JOB_DIR" && zip -q -9 "$out/godot-$version-$name.zip" "$name") ;;
