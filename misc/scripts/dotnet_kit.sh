@@ -70,7 +70,7 @@ ls -la "$work/$name.zip"
 
 if [ -z "${NO_UPLOAD:-}" ]; then
 	gh release view "$tag" -R "$repo" >/dev/null 2>&1 || gh release create "$tag" -R "$repo" --target "$(git rev-parse HEAD)" \
-		--title "C# web export kit $version (godot-enhanced)" --notes "C# (.NET 11) editor + GodotSharp + NuGet + web templates, per platform."
+		--title "C# web export kit $version (godot-enhanced)" --notes "C# (.NET 11) editor + GodotSharp + NuGet + web templates, per platform." || true
 	gh release upload "$tag" -R "$repo" "$work/$name.zip" --clobber
 	echo "✔ 올림: $tag/$name.zip"
 fi
