@@ -7,6 +7,15 @@ def configure(env):
     pass
 
 
+def get_opts(platform):
+    from SCons.Variables import BoolVariable
+
+    return [
+        # godot-enhanced AOT: compile every opcode body once in AOT mode (patches/gdscript-aot.md). Release templates only.
+        BoolVariable("gdscript_aot_check", "Compile the GDScript AOT opcode check", False),
+    ]
+
+
 def get_doc_classes():
     return [
         "@GDScript",

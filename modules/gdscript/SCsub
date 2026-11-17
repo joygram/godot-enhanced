@@ -8,6 +8,10 @@ env_gdscript = env_modules.Clone()
 
 env_gdscript.add_source_files(env.modules_sources, "*.cpp")
 
+# godot-enhanced AOT: every opcode body compiled once in AOT mode (gdscript_vm.cpp with GD_AOT_CALL).
+if env["gdscript_aot_check"]:
+    env_gdscript.add_source_files(env.modules_sources, "aot/*.cpp")
+
 if env.editor_build:
     env_gdscript.add_source_files(env.modules_sources, "./editor/*.cpp")
 
