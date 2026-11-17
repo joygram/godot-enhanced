@@ -13,37 +13,9 @@ template=$(ls -t bin/godot.web.template_release.wasm32.nothreads.zip 2>/dev/null
 chmod +x "$editor"
 echo "에디터: $editor"; echo "템플릿: $template"
 
-proj="$JOB_DIR/web-project"; out="$JOB_DIR/web-out"
-rm -rf "$proj" "$out"; mkdir -p "$proj/s" "$out"
-n=200
-for i in $(seq 0 $((n - 1))); do
-	next=$(( (i + 1) % n )); prev=$(( (i + n - 1) % n ))
-	cat > "$proj/s/c$i.gd" <<EOF
-class_name C$i
-extends RefCounted
-var next_ref: C$next
-var prev_ref: C$prev
-var data: Dictionary = {"id": $i, "name": "c$i"}
-func value(depth: int) -> int:
-	if depth <= 0: return $i
-	var a := [1, 2, 3, $i]
-	for k in range(4): a.append(k * $i)
-	return a.size() + depth
-func describe() -> String:
-	return "C%d -> C%d" % [$i, $next]
-EOF
-done
-cat > "$proj/main.gd" <<'EOF'
-extends Node
-func _ready() -> void:
-	var total := 0
-	for entry in ProjectSettings.get_global_class_list():
-		total += 1
-		load(str(entry.path))
-	print("boot ok classes=%d peak_static_mb=%.1f" % [total, Performance.get_monitor(Performance.MEMORY_STATIC_MAX) / 1048576.0])
-EOF
-printf '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="1"]\n\n[node name="Main" type="Node"]\nscript = ExtResource("1")\n' > "$proj/main.tscn"
-printf 'config_version=5\n\n[application]\n\nconfig/name="web-memory"\nrun/main_scene="res://main.tscn"\n' > "$proj/project.godot"
+proj="$JOB_DIR/web-project"
+. misc/scripts/agent_tests/lib/gdscript-project.sh
+make_gdscript_project "$proj" 200
 "$editor" --headless --path "$proj" --import >/dev/null 2>&1 || true
 
 # 내보내기 + 브라우저 측정. $1 = 템플릿, $2 = extensions_support(dlink), $3 = 결과 이름
