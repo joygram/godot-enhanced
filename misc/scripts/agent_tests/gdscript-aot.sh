@@ -26,7 +26,9 @@ template=$(ls -t bin/godot.$platform.template_release.* 2>/dev/null | grep -v '\
 [ -n "$template" ] || { echo "✘ 템플릿 없음"; exit 1; }
 chmod +x "$template"
 
-timeout 30 "$template" --headless --verbose --main-pack "$w/aot.pck" >"$w/run-aot.log" 2>&1 || true
+# 릴리스 템플릿은 --main-pack 금지(경로 지정 막힘) → 실행 파일 옆 같은 이름 .pck 를 자동으로 읽음
+mkdir -p "$w/game"; cp "$template" "$w/game/game"; cp "$w/aot.pck" "$w/game/game.pck"
+timeout 30 "$w/game/game" --headless --verbose >"$w/run-aot.log" 2>&1 || true
 grep '^PB ' "$w/run-aot.log" >"$w/out-aot.txt" || true
 native=$(grep -c "GDScript AOT: native" "$w/run-aot.log" || true)
 echo "[AOT] $(wc -l <"$w/out-aot.txt") 줄, 네이티브 함수 $native 개"
