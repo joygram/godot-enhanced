@@ -128,6 +128,6 @@ xcrun simctl boot "$udid"
 xcrun simctl install "$udid" "$app"
 bid=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
 perl -e 'alarm shift; exec @ARGV' 90 xcrun simctl launch --console-pty "$udid" "$bid" >"$work/run.log" 2>&1 || true
-grep -E 'trim ok|ERROR|Exception|exception' "$work/run.log" | head -20
-grep -q 'trim ok 3' "$work/run.log" || { echo "✘ 실행 로그에 trim ok 3 없음"; tail -30 "$work/run.log"; exit 1; }
+grep -E 'trim ok|ERROR|Exception|exception' "$work/run.log" | head -20 || true
+grep -q 'trim ok 3' "$work/run.log" || { echo "✘ 실행 로그에 trim ok 3 없음"; tail -40 "$work/run.log"; exit 1; }
 echo "✔ ios-sim-csharp 통과 (GodotTrimGodotSharp=$TRIM)"
