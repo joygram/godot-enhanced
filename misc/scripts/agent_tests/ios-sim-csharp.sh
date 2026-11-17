@@ -82,9 +82,9 @@ EOF
 "$exe" --headless --path "$p" --import >/dev/null 2>&1 || true
 "$exe" --headless --path "$p" --build-solutions --quit >/dev/null 2>&1 || true
 mkdir -p "$work/out"
-"$exe" --headless --path "$p" --export-debug iOS "$work/out/Game.ipa" 2>&1 | grep -E 'ERROR|error' | head -20 || true
+"$exe" --headless --path "$p" --export-debug iOS "$work/out/Game.ipa" >"$work/export.log" 2>&1 || true
 proj=$(ls -d "$work"/out/*.xcodeproj 2>/dev/null | head -1)
-[ -n "$proj" ] || { echo "✘ Xcode 프로젝트 내보내기 실패"; ls -la "$work/out"; exit 1; }
+[ -n "$proj" ] || { echo "✘ Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$work/export.log" | tail -40; exit 1; }
 echo "xcodeproj: $proj"
 
 echo "── xcodebuild (시뮬레이터)"
