@@ -365,6 +365,9 @@ private:
 	// godot-enhanced (prebuild): code offsets holding a GDScriptLanguage global index. Saved by name,
 	// re-resolved on load (global indices depend on registration order).
 	Vector<int> global_index_offsets;
+	// godot-enhanced (prebuild): offsets of OPCODE_STORE_NAMED_GLOBAL. The editor compiles autoloads this way
+	// (they are not in the global map there); a game resolves them to OPCODE_STORE_GLOBAL on load.
+	Vector<int> named_global_offsets;
 	friend class GDScriptPrebuild;
 
 	Vector<int> code;

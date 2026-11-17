@@ -101,6 +101,8 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 	int instr_args_max = 0;
 	// godot-enhanced (prebuild): code offsets holding a GDScriptLanguage global index (runtime-dependent).
 	Vector<int> global_index_offsets;
+	// godot-enhanced (prebuild): offsets of OPCODE_STORE_NAMED_GLOBAL (editor-only form of autoload access).
+	Vector<int> named_global_offsets;
 
 #ifdef DEBUG_ENABLED
 	List<int> temp_stack;

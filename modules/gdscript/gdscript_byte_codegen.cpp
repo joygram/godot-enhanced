@@ -401,6 +401,7 @@ GDScriptFunction *GDScriptByteCodeGenerator::write_end() {
 	function->_stack_size = GDScriptFunction::FIXED_ADDRESSES_MAX + max_locals + temporaries.size();
 	function->_instruction_args_size = instr_args_max;
 	function->global_index_offsets = global_index_offsets;
+	function->named_global_offsets = named_global_offsets;
 
 #ifdef DEBUG_ENABLED
 	function->operator_names = operator_names;
@@ -1035,6 +1036,7 @@ void GDScriptByteCodeGenerator::write_store_global(const Address &p_dst, int p_g
 }
 
 void GDScriptByteCodeGenerator::write_store_named_global(const Address &p_dst, const StringName &p_global) {
+	named_global_offsets.push_back(opcodes.size());
 	append_opcode(GDScriptFunction::OPCODE_STORE_NAMED_GLOBAL);
 	append(p_dst);
 	append(p_global);

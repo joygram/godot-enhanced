@@ -401,6 +401,10 @@ struct GDScriptPrebuild::Saver {
 			w.i32(off);
 			w.str(*gname);
 		}
+		w.u32(f->named_global_offsets.size());
+		for (int off : f->named_global_offsets) {
+			w.i32(off);
+		}
 		w.u32(f->default_arguments.size());
 		for (int d : f->default_arguments) {
 			w.i32(d);
@@ -708,6 +712,16 @@ struct GDScriptPrebuild::Applier {
 			f->code.write[off] = *idx;
 			f->global_index_offsets.push_back(off);
 		}
+		Vector<int> named_offsets;
+		int named = (int)r.u32();
+		for (int i = 0; i < named && !r.fail; i++) {
+			int off = r.i32();
+			if (off < 0 || off + 2 >= code_size) {
+				fail("bad named global offset");
+				break;
+			}
+			named_offsets.push_back(off);
+		}
 		int defaults = (int)r.u32();
 		for (int i = 0; i < defaults && !r.fail; i++) {
 			f->default_arguments.push_back(r.i32());
@@ -726,6 +740,23 @@ struct GDScriptPrebuild::Applier {
 		f->global_names.resize(names);
 		for (int i = 0; i < names && !r.fail; i++) {
 			f->global_names.write[i] = r.str();
+		}
+		// Editor-compiled autoload access (named global) → the game's form (global index), as a runtime
+		// compile would emit. Same instruction length: opcode, destination, operand.
+		for (int off : named_offsets) {
+			int name_idx = f->code[off + 2];
+			if (name_idx < 0 || name_idx >= f->global_names.size()) {
+				fail("bad named global name");
+				break;
+			}
+			const int *idx = global_map.getptr(f->global_names[name_idx]);
+			if (idx) {
+				f->code.write[off] = GDScriptFunction::OPCODE_STORE_GLOBAL;
+				f->code.write[off + 2] = *idx;
+				f->global_index_offsets.push_back(off + 2);
+			} else {
+				f->named_global_offsets.push_back(off);
+			}
 		}
 
 		table(f->operator_funcs, [](const FnKey &k) { return Variant::get_validated_operator_evaluator((Variant::Operator)k.a, (Variant::Type)k.b, (Variant::Type)k.c); }, "operator");
