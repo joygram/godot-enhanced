@@ -26,10 +26,12 @@ EOF
 extends Node
 func _ready() -> void:
 	var total := 0
+	var t0 := Time.get_ticks_usec()
 	for entry in ProjectSettings.get_global_class_list():
 		total += 1
 		load(str(entry.path))
-	print("boot ok classes=%d ms=%d peak_static_mb=%.1f" % [total, Time.get_ticks_msec(), Performance.get_monitor(Performance.MEMORY_STATIC_MAX) / 1048576.0])
+	var load_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	print("boot ok classes=%d ms=%d load_ms=%.1f peak_static_mb=%.1f" % [total, Time.get_ticks_msec(), load_ms, Performance.get_monitor(Performance.MEMORY_STATIC_MAX) / 1048576.0])
 	if "--bench-quit" in OS.get_cmdline_user_args():
 		get_tree().quit()
 EOF
