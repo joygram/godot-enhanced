@@ -51,7 +51,11 @@ EOF
 		[ "$(head -c2 "$o/$f" | od -An -tx1 | tr -d ' \n')" = "1f8b" ] || { echo "✘ [$tag] $f 미압축"; exit 1; }
 		echo "[$tag] precompress: $f $(stat -c%s "$o/$f") B"
 	done
-	node misc/scripts/web_memory.mjs "$o" "${WEB_MEMORY_SECONDS:-30}" "$JOB_DIR/web-memory-$tag.json"
+	if ! node misc/scripts/web_memory.mjs "$o" "${WEB_MEMORY_SECONDS:-30}" "$JOB_DIR/web-memory-$tag.json"; then
+		echo "✘ [$tag] 브라우저 오류:"
+		node -e "const j=require(process.argv[1]);console.log(JSON.stringify(j.errors,null,1).slice(0,3000))" "$JOB_DIR/web-memory-$tag.json" || true
+		exit 1
+	fi
 	echo "✔ [$tag] web-memory 통과"
 }
 
