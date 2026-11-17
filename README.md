@@ -2,16 +2,29 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
-## 🍎 0.1.7 — C# iOS: NativeAOT binary −65% (opt-in)
+## 🍎 0.1.8 — C# on iOS runs again (.NET 11), verified in the simulator
 
-| `ios-arm64` NativeAOT publish (sample C# project) | Default | **`GodotTrimGodotSharp=true`** | |
-|---|---|---|---|
-| `libGame.dylib` | 18.6 MB | **6.6 MB** | **−65%** |
-| Publish folder (with dSYM) | 133.9 MB | **54.4 MB** | **−59%** |
+> With .NET 11, Godot C# iOS exports built but the game had no C#: "`.NET: Failed to load hostfxr`". Fixed and run-tested.
 
-- Default iOS keeps all of `GodotSharp`; `<GodotTrimGodotSharp>true</GodotTrimGodotSharp>` trims it like Web / Android
-- Opt-in until verified on a device / simulator
-- Measured: Mac agent, Xcode 27.2, .NET 11, test [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
+| iOS Simulator (iOS 27.2), sample C# project | Before | **0.1.8** |
+|---|---|---|
+| Export | "project assembly not found" | **OK** |
+| App start | `.NET: Failed to load hostfxr` | **C# `_Ready` runs, `[Export]` array intact** |
+
+- Cause: .NET 11 NativeAOT names the library `libGame.dylib`; Godot looks for `Game.dylib`
+- Fix: export plugin drops the `lib` prefix after publish and sets the install name
+- Test: [`ios-sim-csharp.sh`](misc/scripts/agent_tests/ios-sim-csharp.sh) — export → `xcodebuild` → `simctl` run → log `trim ok 3`
+- Not verified: physical device
+
+## 🍎 0.1.7 — C# iOS GodotSharp trimming: ⚠️ breaks at runtime, do not use
+
+| `ios-arm64` NativeAOT publish (sample C# project) | Default | `GodotTrimGodotSharp=true` |
+|---|---|---|
+| `libGame.dylib` | 18.6 MB | 6.6 MB (−65%) |
+| Simulator run (0.1.8 test) | ✔ | ✘ `instance_create(): native_name == StringName()` |
+
+- NativeAOT strips the reflection data Godot uses to find a script's native class
+- Switch kept for research; default stays off
 
 ## 🧩 0.1.6 — GDExtension web builds pre-compressed too (side module −76%)
 
@@ -147,8 +160,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.7`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.7`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.8`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.8`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -162,6 +175,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
 - Godot GDExtension web size, Godot side.wasm too big, Godot dlink web export slow loading
+- Godot C# iOS export failed to load hostfxr, Godot .NET 11 iOS, Godot C# iOS simulator
 - Godot C# iOS app size, Godot NativeAOT iOS binary too big, Godot mono iOS export size
 - Godot C# Android APK size, Godot C# Android trimming, Godot mono Android too big, Godot .NET mobile export size
 - Godot 일본어 입력, Godot 일본어 IME 리눅스, Godot Japanese input not working
@@ -251,16 +265,27 @@ git cherry-pick 4.7.2-stable..origin/main
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
 
-### 🍎 0.1.7 — C# iOS: NativeAOT 바이너리 −65% (선택)
+### 🍎 0.1.8 — C# iOS 다시 동작 (.NET 11), 시뮬레이터 실행 검증
 
-| `ios-arm64` NativeAOT publish (표본 C# 프로젝트) | 기본 | **`GodotTrimGodotSharp=true`** | |
-|---|---|---|---|
-| `libGame.dylib` | 18.6 MB | **6.6 MB** | **−65%** |
-| publish 폴더 (dSYM 포함) | 133.9 MB | **54.4 MB** | **−59%** |
+| iOS 시뮬레이터 (iOS 27.2), 표본 C# 프로젝트 | 전 | **0.1.8** |
+|---|---|---|
+| 내보내기 | "project assembly not found" | **정상** |
+| 앱 시작 | `.NET: Failed to load hostfxr` | **C# `_Ready` 실행, `[Export]` 배열 정상** |
 
-- iOS 기본은 `GodotSharp` 통째 유지, `<GodotTrimGodotSharp>true</GodotTrimGodotSharp>` → 웹·Android 처럼 트리밍
-- 기기·시뮬레이터 실행 검증 전까지 선택 옵션
-- 실측: Mac 에이전트, Xcode 27.2, .NET 11, 검사 [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
+- 원인: .NET 11 NativeAOT 가 `libGame.dylib` 로 만듦, Godot 는 `Game.dylib` 를 찾음
+- 수정: 내보내기 플러그인이 publish 뒤 `lib` 접두 제거·install name 맞춤
+- 검사: [`ios-sim-csharp.sh`](misc/scripts/agent_tests/ios-sim-csharp.sh) — 내보내기 → `xcodebuild` → `simctl` 실행 → 로그 `trim ok 3`
+- 미검증: 실기기
+
+### 🍎 0.1.7 — C# iOS GodotSharp 트리밍: ⚠️ 실행 시 깨짐, 쓰지 말 것
+
+| `ios-arm64` NativeAOT publish (표본 C# 프로젝트) | 기본 | `GodotTrimGodotSharp=true` |
+|---|---|---|
+| `libGame.dylib` | 18.6 MB | 6.6 MB (−65%) |
+| 시뮬레이터 실행 (0.1.8 검사) | ✔ | ✘ `instance_create(): native_name == StringName()` |
+
+- NativeAOT 가 스크립트의 네이티브 클래스를 찾는 리플렉션 정보를 지움
+- 스위치는 연구용으로 남김, 기본은 꺼짐
 
 ### 🧩 0.1.6 — GDExtension 웹 빌드도 미리 압축 (side module −76%)
 
@@ -386,7 +411,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.7`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.7`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.8`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.8`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
