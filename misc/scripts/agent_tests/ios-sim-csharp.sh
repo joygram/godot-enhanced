@@ -112,6 +112,8 @@ application/app_store_team_id="ABCDE12345"
 application/bundle_identifier="org.godotenhanced.trim$trim"
 application/min_ios_version="15.0"
 EOF
+	# C# 내보내기는 솔루션 파일 필요 (없으면 C# 부분이 빠진 채 내보냄)
+	(cd "$p" && dotnet new sln -n Game --format sln >/dev/null && dotnet sln Game.sln add Game.csproj >/dev/null)
 	"$exe" --headless --path "$p" --import >/dev/null 2>&1 || true
 	"$exe" --headless --path "$p" --build-solutions --quit >/dev/null 2>&1 || true
 	"$exe" --headless --path "$p" --export-debug iOS "$w/out/Game.ipa" >"$w/export.log" 2>&1 || true
