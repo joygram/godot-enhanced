@@ -61,7 +61,12 @@ if [ "$os" = linuxbsd ]; then
 		echo "── linux-bionic-arm64 NativeAOT (NDK $(basename "$ndk"))"
 		rm -rf obj bin
 		echo "  평가: $(dotnet msbuild -p:RuntimeIdentifier=linux-bionic-arm64 -p:GodotTargetPlatform=android -p:Configuration=ExportRelease -getProperty:PublishAot -getProperty:UseMonoRuntime -getProperty:GodotAndroidNativeAot -getProperty:CppCompilerAndLinker 2>&1 | tr -d '\n ')"
-		dotnet publish -c ExportRelease -r linux-bionic-arm64 -p:GodotTargetPlatform=android -p:GodotAndroidNdkPath="$ndk" -p:PublishAot=true -p:PublishAotUsingRuntimePack=true -p:DisableUnsupportedError=true -o "$work/out-aot" -v q -nologo
+		# 내보내기 플러그인(ExportPlugin.cs, linux-bionic)이 넘기는 전역 속성과 같게
+		tc="$ndk/toolchains/llvm/prebuilt/linux-x86_64"
+		dotnet publish -c ExportRelease -r linux-bionic-arm64 -p:GodotTargetPlatform=android -p:GodotAndroidNativeAot=true \
+			-p:PublishAot=true -p:PublishAotUsingRuntimePack=true -p:DisableUnsupportedError=true -p:NativeLib=Shared \
+			-p:CppCompilerAndLinker="$tc/bin/clang" -p:SysRoot="$tc/sysroot" -p:ObjCopyName="$tc/bin/llvm-objcopy" -p:LinkerFlavor=lld \
+			-o "$work/out-aot" -v q -nologo
 		so=$(ls "$work"/out-aot/*Game.so 2>/dev/null | head -1 || true)
 		[ -n "$so" ] || { echo "✘ Game .so 없음: $(ls "$work/out-aot" | tr '\n' ' ')"; exit 1; }
 		nm="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"

@@ -291,12 +291,20 @@ namespace GodotTools.Export
                     {
                         string ndk = FindAndroidNdk()
                             ?? throw new InvalidOperationException("Android NativeAOT (dotnet/android_use_linux_bionic) needs the Android NDK. Set ANDROID_NDK_ROOT or install an NDK under the Android SDK (Editor Settings → export/android/android_sdk_path).");
-                        extraProperties.Add($"GodotAndroidNdkPath={ndk}");
-                        // Global properties: restore picks the runtime pack before the SDK props are read.
-                        // linux-bionic is not a .NET-supported publish target yet → DisableUnsupportedError.
+                        // All as global properties: restore and the runtime-pack ILCompiler only see globals
+                        // (SDK props do not reach them). linux-bionic is not a .NET-supported publish target yet.
+                        string host = OperatingSystem.IsWindows() ? "windows-x86_64" : OperatingSystem.IsMacOS() ? "darwin-x86_64" : "linux-x86_64";
+                        string exe = OperatingSystem.IsWindows() ? ".exe" : "";
+                        string toolchain = Path.Combine(ndk, "toolchains", "llvm", "prebuilt", host);
+                        extraProperties.Add("GodotAndroidNativeAot=true");
                         extraProperties.Add("PublishAot=true");
                         extraProperties.Add("PublishAotUsingRuntimePack=true");
                         extraProperties.Add("DisableUnsupportedError=true");
+                        extraProperties.Add("NativeLib=Shared");
+                        extraProperties.Add($"CppCompilerAndLinker={Path.Combine(toolchain, "bin", "clang" + exe)}");
+                        extraProperties.Add($"SysRoot={Path.Combine(toolchain, "sysroot")}");
+                        extraProperties.Add($"ObjCopyName={Path.Combine(toolchain, "bin", "llvm-objcopy" + exe)}");
+                        extraProperties.Add("LinkerFlavor=lld");
                     }
                     if (!BuildManager.PublishProjectBlocking(buildConfig, platform,
                             runtimeIdentifier, publishOutputDir, includeDebugSymbols, extraProperties))
