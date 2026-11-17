@@ -2,13 +2,22 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
-## 🧵 0.2.1 — Web templates on Emscripten 7.0.0: threads + dlink boots
+## 🔧 0.2.1 — Fix: Emscripten 7.0.0 (latest), web threads + GDExtension work again
+
+- Fix, not a new feature: stock Godot already supports web threads + GDExtension
+- Emscripten 7.0.0 (latest) supported, multithreaded web included
+- Resolved: 0.2.0 threads + dlink template crashed at startup
+
+| Web template | 0.2.0 (Emscripten 6.0.2) | **0.2.1 (7.0.0)** |
+|---|---|---|
+| threads + dlink (GDExtension) | ✘ crash at startup | **✔ boots** |
+| real game (SQLite GDExtension, threads) | ✘ stalls 49% | **✔ boot 10 s, 0 errors** |
 
 - Web templates (GDScript): Emscripten 6.0.2 → **7.0.0**, set in `misc/scripts/emscripten-version`
-- Fixed: threads + dlink crashed at startup (`setting 'sig'`, then GL `LinkError`)
+- Error: `setting 'sig'`, then GL `LinkError`
 - Cause: 6.0.2 bound GL aliases to wasm exports before instantiation
 - GDExtension web builds: rebuild with 7.0.0 (6.0.2 side modules → `resolved is not a function`)
-- C# `.mono` web templates stay on 6.0.2 (Mono runtime pack)
+- C# `.mono` web templates: same version file (7.0.0)
 
 ## ⚡ 0.2.0 — GDScript prebuild, export templates locked to the release
 
@@ -197,6 +206,9 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot memory optimization, Godot performance optimization, Godot web game too big
 - Godot web export memory, WASM heap out of memory, GDScript parser memory leak
 - Godot SQLite web, GDExtension web export, GDExtension without dlink, SharedArrayBuffer COOP COEP
+- Godot web export threads crash fix, Godot web threads dlink startup error
+- "Cannot set properties of undefined (setting 'sig')", "function import requires a callable" Godot
+- Godot Emscripten 7, Godot Emscripten 7.0.0 web template, GDExtension rebuild Emscripten 7
 - Godot web game itch.io Poki CrazyGames, Godot AdSense web, Godot Safari iOS web
 - Godot ARM64 Windows Linux, Apple Silicon Godot
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
@@ -250,11 +262,12 @@ Apply all three (as above), or only the ones you need — each patch also applie
 ## Prebuilt Web export template
 
 - GitHub Actions ([enhanced_web_template.yml](.github/workflows/enhanced_web_template.yml)) builds the Web template from this branch and publishes it on [Releases](https://github.com/joygram/godot-enhanced/releases).
-- Assets: `godot.web.template_release.wasm32.nothreads.dlink.zip` (GDExtension support), `godot.web.template_release.wasm32.nothreads.zip`.
+- Assets: 4 zips, threads / nothreads × static / dlink (`godot.web.template_release.wasm32[.nothreads][.dlink].zip`)
+- dlink = GDExtension support; threads = server must send COOP / COEP
 - Use: Web export preset → Custom Template → Release → the zip.
-- Emscripten 7.0.0 (`misc/scripts/emscripten-version`); C# `.mono` templates 6.0.2.
+- Emscripten 7.0.0 (`misc/scripts/emscripten-version`), GDScript and C# alike.
 - With dlink, your GDExtension web builds must use the same version.
-- These are the GDScript templates (no threads). C# web projects need the separate `.mono` templates below.
+- These are the GDScript templates. C# web projects need the separate `.mono` templates below.
 - GDExtension without dlink: build the template with `static_gdextensions=<name>` (list: [misc/static_gdextensions.json](misc/static_gdextensions.json)).
 
 ## C# (.NET) web export
@@ -292,6 +305,24 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🔧 0.2.1 — 수정: Emscripten 7.0.0(최신) 지원, 웹 멀티스레드 + GDExtension 다시 동작
+
+- 새 기능 아님: 공식 Godot 도 웹 멀티스레드 + GDExtension 지원
+- 최신 Emscripten 7.0.0 지원, 웹 멀티스레드 포함
+- 해소: 0.2.0 멀티스레드 + dlink 템플릿 시작 오류
+
+| 웹 템플릿 | 0.2.0 (Emscripten 6.0.2) | **0.2.1 (7.0.0)** |
+|---|---|---|
+| 멀티스레드 + dlink (GDExtension) | ✘ 시작 즉시 오류 | **✔ 부팅** |
+| 실제 게임 (SQLite GDExtension, 멀티스레드) | ✘ 49% 멈춤 | **✔ 10초 부팅, 오류 0** |
+
+- 웹 템플릿 Emscripten 6.0.2 → **7.0.0**, 버전은 `misc/scripts/emscripten-version`
+- 오류: `setting 'sig'`, GL `LinkError`
+- 원인: 6.0.2 가 GL 별칭을 인스턴스 전에 wasm export 로 묶음
+- GDExtension 웹 빌드: 7.0.0 으로 재빌드 필요 (6.0.2 모듈 → `resolved is not a function`)
+- 서버: 멀티스레드 = COOP·COEP 헤더 필요 (SharedArrayBuffer)
+- C# `.mono` 웹 템플릿: 같은 버전 파일 (7.0.0)
 
 ### ⚡ 0.2.0 — GDScript 사전 빌드, 내보내기 템플릿을 릴리스에 고정
 
@@ -498,11 +529,11 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 ### 미리 빌드된 웹 템플릿
 
 - GitHub Actions가 이 브랜치로 웹 내보내기 템플릿을 빌드해 [Releases](https://github.com/joygram/godot-enhanced/releases)에 올립니다.
-- `godot.web.template_release.wasm32.nothreads.dlink.zip`: GDExtension을 쓰는 프로젝트용
-- `godot.web.template_release.wasm32.nothreads.zip`: 일반 프로젝트용
+- zip 4종: 스레드·스레드 없음 × 정적·dlink (`godot.web.template_release.wasm32[.nothreads][.dlink].zip`)
+- dlink = GDExtension 사용, 스레드 = 서버 COOP·COEP 헤더 필요
 - 웹 내보내기 프리셋의 Custom Template → Release에 zip 파일을 지정하면 됩니다.
-- Emscripten 6.0.2로 빌드합니다(GDScript·C# 공통). dlink 템플릿을 쓴다면 GDExtension 웹 빌드도 같은 버전이어야 합니다.
-- 위 템플릿은 GDScript용(스레드 없음)입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿이 필요합니다.
+- Emscripten 7.0.0 (`misc/scripts/emscripten-version`), GDScript·C# 공통. dlink 면 GDExtension 웹 빌드도 같은 버전
+- 위 템플릿은 GDScript용입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿이 필요합니다.
 - dlink 없이 GDExtension: 템플릿을 `static_gdextensions=<이름>`으로 빌드 (목록: [misc/static_gdextensions.json](misc/static_gdextensions.json))
 
 ### C#(.NET) 웹 내보내기
@@ -536,6 +567,8 @@ git cherry-pick 4.7.2-stable..origin/main
 - 고도 메모리 최적화, 고도 성능 최적화, 고도 메모리 성능 최적화
 - 고도 웹 빌드 메모리, Godot WASM 메모리 부족, 고도 웹게임 용량 줄이기
 - 고도 SQLite 웹, GDExtension 웹 빌드, 고도 웹게임 광고 애드센스, 고도 사파리 아이폰 웹
+- 고도 웹 멀티스레드 오류 해결, 고도 웹 시작 오류, 고도 웹 스레드 dlink 오류
+- 고도 Emscripten 7, 고도 Emscripten 7.0.0 웹 템플릿, GDExtension Emscripten 7 재빌드
 - 고도 ARM64, 애플 실리콘 고도
 - 고도 엔진 한글 입력, Godot 한글 IME, 한글 입력 시 커서 안 움직임, 한글 씹힘, LineEdit·TextEdit 한글
 
