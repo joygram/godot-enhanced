@@ -45,5 +45,7 @@ EOF
 		echo "$ms $(( (t1 - t0) / 1000000 )) $mb $lms" >>"$work/runs-$mode"
 	done
 	printf '%-6s %10s %10s %10s %12s\n' "$mode" "$(cut -d' ' -f1 "$work/runs-$mode" | median)" "$(cut -d' ' -f4 "$work/runs-$mode" | median)" "$(cut -d' ' -f2 "$work/runs-$mode" | median)" "$(cut -d' ' -f3 "$work/runs-$mode" | median)"
+	# 단계별 (엔진 계측, 1회): 파싱·분석·컴파일 자기 몫
+	echo "       $(GODOT_GDSCRIPT_TIMINGS=1 "$editor" --headless --main-pack "$pck" -- --bench-quit 2>&1 | grep -m1 gdscript_timings || echo '(계측 없음)')"
 done
 echo "✔ gdscript-boot 측정 끝"

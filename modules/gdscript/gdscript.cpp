@@ -62,6 +62,51 @@
 #include "editor/file_system/editor_paths.h"
 #endif
 
+#include "core/os/os.h"
+
+///////////////////////////
+
+// godot-enhanced: GDScript load-time breakdown (parse / analyze / compile), printed at shutdown when the
+// environment variable GODOT_GDSCRIPT_TIMINGS is set. Times are exclusive: nested dependency reloads
+// are subtracted from the stage that triggered them.
+namespace GDScriptTimings {
+static bool enabled = false;
+static uint64_t parse_us = 0, analyze_us = 0, compile_us = 0, reload_nested_us = 0;
+static uint32_t scripts = 0;
+
+struct Stage {
+	uint64_t *acc;
+	uint64_t start;
+	uint64_t nested_start;
+	explicit Stage(uint64_t *p_acc) :
+			acc(p_acc), start(enabled ? OS::get_singleton()->get_ticks_usec() : 0), nested_start(reload_nested_us) {}
+	~Stage() {
+		if (enabled) {
+			*acc += (OS::get_singleton()->get_ticks_usec() - start) - (reload_nested_us - nested_start);
+		}
+	}
+};
+
+struct Reload {
+	uint64_t start;
+	explicit Reload() :
+			start(enabled ? OS::get_singleton()->get_ticks_usec() : 0) {}
+	~Reload() {
+		if (enabled) {
+			reload_nested_us += OS::get_singleton()->get_ticks_usec() - start;
+			scripts++;
+		}
+	}
+};
+
+static void print_summary() {
+	if (enabled) {
+		print_line(vformat("gdscript_timings scripts=%d parse_ms=%.1f analyze_ms=%.1f compile_ms=%.1f",
+				scripts, parse_us / 1000.0, analyze_us / 1000.0, compile_us / 1000.0));
+	}
+}
+} // namespace GDScriptTimings
+
 ///////////////////////////
 
 GDScriptNativeClass::GDScriptNativeClass(const StringName &p_name) {
@@ -815,12 +860,16 @@ Error GDScript::reload(bool p_keep_state) {
 
 	valid = false;
 	Error err;
+	GDScriptTimings::Reload timing_reload;
 	{
 	GDScriptParser parser;
-	if (!binary_tokens.is_empty()) {
-		err = parser.parse_binary(binary_tokens, path);
-	} else {
-		err = parser.parse(source, path, false);
+	{
+		GDScriptTimings::Stage timing(&GDScriptTimings::parse_us);
+		if (!binary_tokens.is_empty()) {
+			err = parser.parse_binary(binary_tokens, path);
+		} else {
+			err = parser.parse(source, path, false);
+		}
 	}
 	if (err) {
 		if (EngineDebugger::is_active()) {
@@ -833,7 +882,10 @@ Error GDScript::reload(bool p_keep_state) {
 	}
 
 	GDScriptAnalyzer analyzer(&parser);
-	err = analyzer.analyze();
+	{
+		GDScriptTimings::Stage timing(&GDScriptTimings::analyze_us);
+		err = analyzer.analyze();
+	}
 
 	if (err) {
 		if (EngineDebugger::is_active()) {
@@ -853,7 +905,10 @@ Error GDScript::reload(bool p_keep_state) {
 
 	GDScriptCompiler compiler;
 	compiler.finish_dependencies = false;
-	err = compiler.compile(&parser, this, p_keep_state);
+	{
+		GDScriptTimings::Stage timing(&GDScriptTimings::compile_us);
+		err = compiler.compile(&parser, this, p_keep_state);
+	}
 
 	if (err) {
 		// TODO: Provide the script function as the first argument.
@@ -2163,6 +2218,8 @@ void GDScriptLanguage::remove_named_global_constant(const StringName &p_name) {
 }
 
 void GDScriptLanguage::init() {
+	GDScriptTimings::enabled = OS::get_singleton()->has_environment("GODOT_GDSCRIPT_TIMINGS");
+
 	//populate global constants
 	int gcc = CoreConstants::get_global_constant_count();
 	for (int i = 0; i < gcc; i++) {
@@ -2248,6 +2305,7 @@ void GDScriptLanguage::finish() {
 		return;
 	}
 	finishing = true;
+	GDScriptTimings::print_summary();
 
 	// Clear the cache before parsing the script_list
 	GDScriptCache::clear();
