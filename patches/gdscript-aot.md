@@ -1,5 +1,8 @@
 # GDScript AOT — 사전 빌드(.gdc) → C++ (1.0.1) — 설계
 
+> **실험** — 기본 꺼짐, 릴리스 범위 밖. 켜는 조건: 내보내기 `GODOT_GDSCRIPT_AOT_DIR` + 템플릿 빌드 `gdscript_aot_dir=`
+> 현재: 기능 스크립트 출력 VM 과 동일(macOS) · rpg2d 함수 5387개 생성·MSVC 빌드 통과 · 템플릿 +89% (61.5→116.4MB) → 크기 해결 전 보류
+
 - 목표: 사전 빌드 함수 → C++ → clang 네이티브. VM 분기 루프 제거
 - 컴파일러: clang 계열 (emcc·clang·Xcode·MSVC)
 - 원칙: 명령 의미 새로 안 씀 → VM 명령 본문 그대로 재사용
