@@ -111,8 +111,17 @@ app=$(find "$work/dd/Build/Products" -maxdepth 3 -name '*.app' | head -1 || true
 echo "app: $app ($(du -sk "$app" | cut -f1) KB)"
 
 echo "── 시뮬레이터 실행"
-dtype=$(xcrun simctl list devicetypes | grep -o 'com.apple.CoreSimulator.SimDeviceType.iPhone-[^)]*' | tail -1)
-rt=$(xcrun simctl list runtimes | grep -o 'com.apple.CoreSimulator.SimRuntime.iOS-[^ ]*' | head -1)
+# 런타임이 지원하는 iPhone 기종에서 고름
+read -r rt dtype < <(xcrun simctl list runtimes -j | python3 -c '
+import json, sys
+for r in json.load(sys.stdin)["runtimes"]:
+    if r.get("platform") == "iOS" and r.get("isAvailable"):
+        ts = [t["identifier"] for t in r.get("supportedDeviceTypes", []) if "iPhone" in t["identifier"]]
+        if ts:
+            print(r["identifier"], ts[-1]); break
+')
+[ -n "${rt:-}" ] || { echo "✘ 쓸 수 있는 iOS 런타임·기종 없음"; exit 1; }
+echo "런타임 $rt, 기종 $dtype"
 udid=$(xcrun simctl create godot-trim-test "$dtype" "$rt")
 trap 'xcrun simctl shutdown "$udid" >/dev/null 2>&1; xcrun simctl delete "$udid" >/dev/null 2>&1' EXIT
 xcrun simctl boot "$udid"
