@@ -552,6 +552,9 @@ Error EditorExportPlatformWeb::export_project(const Ref<EditorExportPreset> &p_p
 	if ((bool)p_preset->get("compression/precompress")) {
 		const String targets[] = { pck_path, base_path + ".wasm", base_path + ".side.wasm" };
 		for (const String &target : targets) {
+			if (!FileAccess::exists(target)) {
+				continue;
+			}
 			Vector<uint8_t> src = FileAccess::get_file_as_bytes(target);
 			if (src.size() < 2 || (src[0] == 0x1f && src[1] == 0x8b)) {
 				continue;

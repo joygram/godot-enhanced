@@ -2,6 +2,20 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🧩 0.1.6 — GDExtension web builds pre-compressed too (side module −76%)
+
+> Web games with GDExtensions (dlink) load a ~43 MB `.side.wasm`. 0.1.3 compression skipped it; now it's covered.
+
+| dlink web export (`extensions_support`) | Before | **0.1.6** | |
+|---|---|---|---|
+| `.side.wasm` (engine side module) | 42.8 MB | **10.1 MB** | **−76%** |
+| `.wasm` (main module) | 1.3 MB | **0.5 MB** | **−58%** |
+
+- `.side.wasm` now fetched by the Godot preloader → gzip inflate + loading bar progress
+- Handed to Emscripten as a blob URL; no server config
+- Verified: headless Chrome, static and dlink exports, 0 errors, heap 38.4 MB both
+- Test: [`web-memory.sh`](misc/scripts/agent_tests/web-memory.sh) runs both variants when a dlink template exists
+
 ## 📱 0.1.5 — C# Android: managed code −83%, trimmed by default
 
 > Godot C# Android exports ship the whole .NET framework and `GodotSharp`. godot-enhanced trims them, same rule as the web.
@@ -53,7 +67,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Loading bar counts downloaded (compressed) bytes
 - Measured: gzip -6 on existing exports, 2026-11-17
 - Verified: headless Chrome boots a pre-compressed export (wasm 9.7 MB on disk), 0 errors, heap unchanged (38.4 MB)
-- Not yet: dlink `.side.wasm`, C# runtime files (loaded outside the Godot preloader)
+- dlink `.side.wasm`: covered from 0.1.6. Not yet: C# runtime files (loaded outside the Godot preloader)
 
 ## 🚀 0.1.1 — C# on the web, and it's light
 
@@ -122,8 +136,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.5`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.5`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.6`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.6`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -136,6 +150,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot ARM64 Windows Linux, Apple Silicon Godot
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
+- Godot GDExtension web size, Godot side.wasm too big, Godot dlink web export slow loading
 - Godot C# Android APK size, Godot C# Android trimming, Godot mono Android too big, Godot .NET mobile export size
 - Godot 일본어 입력, Godot 일본어 IME 리눅스, Godot Japanese input not working
 - Godot Japanese IME Linux, Godot Mozc fcitx5 ibus, Godot Wayland text-input-v3 IME
@@ -224,6 +239,18 @@ git cherry-pick 4.7.2-stable..origin/main
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
 
+### 🧩 0.1.6 — GDExtension 웹 빌드도 미리 압축 (side module −76%)
+
+| dlink 웹 내보내기 (`extensions_support`) | 전 | **0.1.6** | |
+|---|---|---|---|
+| `.side.wasm` (엔진 side module) | 42.8 MB | **10.1 MB** | **−76%** |
+| `.wasm` (main module) | 1.3 MB | **0.5 MB** | **−58%** |
+
+- `.side.wasm` 을 Godot 프리로더가 받음 → gzip 해제·진행률 반영
+- Emscripten 에 blob URL 로 넘김, 서버 설정 불필요
+- 검증: headless Chrome, 정적·dlink 내보내기 모두 오류 0, 힙 38.4 MB
+- 검사: [`web-memory.sh`](misc/scripts/agent_tests/web-memory.sh), dlink 템플릿 있으면 두 변형 모두
+
 ### 📱 0.1.5 — C# Android: 관리 코드 −83%, 기본 트리밍
 
 | `android-arm64` publish (표본 C# 프로젝트) | 전 | **0.1.5** | |
@@ -267,7 +294,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 파일명 유지 → 호스트가 또 gzip 해도 이중 해제 없음
 - 실측: 기존 내보내기에 gzip -6, 2026-11-17
 - 검증: 미리 압축한 내보내기(디스크 wasm 9.7 MB) headless Chrome 부팅, 오류 0, 힙 변화 없음(38.4 MB)
-- 아직 안 됨: dlink `.side.wasm`, C# 런타임 파일
+- dlink `.side.wasm`: 0.1.6 부터 포함. 아직 안 됨: C# 런타임 파일
 
 ### 🚀 0.1.1 — C#이 웹에서 돌아가고, 가볍다
 
@@ -336,7 +363,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.5`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.5`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.6`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.6`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
