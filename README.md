@@ -2,6 +2,22 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 📱 0.1.5 — C# Android: managed code −83%, trimmed by default
+
+> Godot C# Android exports ship the whole .NET framework and `GodotSharp`. godot-enhanced trims them, same rule as the web.
+
+| `android-arm64` publish (sample C# project) | Before | **0.1.5** | |
+|---|---|---|---|
+| Managed `.dll` total | 29.8 MB | **5.0 MB** | **−83%** |
+| `GodotSharp.dll` | 5.9 MB | **2.8 MB** | **−52%** |
+| Publish folder (with native runtime) | 100.1 MB | **74.9 MB** | **−25%** |
+
+- `PublishTrimmed` on by default for Web and Android; game assembly kept whole (scripts found by reflection)
+- One rule in `Sdk.targets` for both platforms. iOS unchanged (NativeAOT)
+- Opt out: `<PublishTrimmed>false</PublishTrimmed>`, or keep more with `TrimmerRootAssembly`
+- Measured: Linux agent, .NET 11, test [`dotnet-trim-android.sh`](misc/scripts/agent_tests/dotnet-trim-android.sh), 2026-11-17
+- Not yet verified: running on an Android device
+
 ## 🇯🇵 0.1.4 — Japanese input on Linux, verified (日本語入力 OK)
 
 > "Godot won't take Japanese on Linux" — tested on X11 and Wayland with fcitx5 + Mozc, now checked on every agent run.
@@ -106,8 +122,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.4`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.4`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.5`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.5`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -120,6 +136,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot ARM64 Windows Linux, Apple Silicon Godot
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
+- Godot C# Android APK size, Godot C# Android trimming, Godot mono Android too big, Godot .NET mobile export size
 - Godot 일본어 입력, Godot 일본어 IME 리눅스, Godot Japanese input not working
 - Godot Japanese IME Linux, Godot Mozc fcitx5 ibus, Godot Wayland text-input-v3 IME
 - Godot 日本語入力, Godot 日本語入力 できない, Godot IME 変換 できない, Godot Linux Mozc fcitx5, Godot Wayland 日本語, Godot LineEdit 日本語
@@ -206,6 +223,20 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 📱 0.1.5 — C# Android: 관리 코드 −83%, 기본 트리밍
+
+| `android-arm64` publish (표본 C# 프로젝트) | 전 | **0.1.5** | |
+|---|---|---|---|
+| 관리 `.dll` 합계 | 29.8 MB | **5.0 MB** | **−83%** |
+| `GodotSharp.dll` | 5.9 MB | **2.8 MB** | **−52%** |
+| publish 폴더 (네이티브 런타임 포함) | 100.1 MB | **74.9 MB** | **−25%** |
+
+- 웹·Android `PublishTrimmed` 기본 켬, 게임 어셈블리는 통째 유지
+- 규칙 한 곳 `Sdk.targets`, 두 플랫폼 공용. iOS 그대로 (NativeAOT)
+- 끄기: `<PublishTrimmed>false</PublishTrimmed>`, 더 남기기: `TrimmerRootAssembly`
+- 실측: Linux 에이전트, .NET 11, 검사 [`dotnet-trim-android.sh`](misc/scripts/agent_tests/dotnet-trim-android.sh), 2026-11-17
+- 미검증: Android 기기 실행
 
 ### 🇯🇵 0.1.4 — Linux 일본어 입력(Mozc) 검증, 자동 검사
 
@@ -305,7 +336,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.4`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.4`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.5`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.5`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
