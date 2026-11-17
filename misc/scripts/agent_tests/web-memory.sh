@@ -59,18 +59,22 @@ EOF
 	echo "✔ [$tag] web-memory 통과"
 }
 
-run_variant "$template" false static
-# 사전 빌드 (script_export_mode=3): 같은 템플릿, 부팅·힙 비교
-run_variant "$template" false static-prebuilt false 3
-# dlink 템플릿이 있으면 (platform=web dlink_enabled=yes) side module 경로도 검사
-dlink=$(ls -t bin/godot.web.template_release.wasm32.nothreads.dlink.zip 2>/dev/null | head -1 || true)
-if [ -n "$dlink" ]; then run_variant "$dlink" true dlink; else echo "(dlink 템플릿 없음 → dlink 검사 생략)"; fi
-# 멀티스레드 + dlink + 사전 빌드 (rpg2d 배포 조합) — threads=yes dlink_enabled=yes 템플릿이 있으면
-tdlink=$(ls -t bin/godot.web.template_release.wasm32.dlink.zip 2>/dev/null | head -1 || true)
-if [ -n "$tdlink" ]; then
-	# 대조: 사전 빌드 없이 (모드 2) → 실패가 템플릿 탓인지 사전 빌드 탓인지 가름
-	( run_variant "$tdlink" true threads-dlink true 2 ) || tdlink_fail=1
-	run_variant "$tdlink" true threads-dlink-prebuilt true 3
-else
-	echo "(threads dlink 템플릿 없음 → 생략)"
-fi
+# 템플릿 행렬: {static, dlink} × {싱글, 멀티 스레드} × {모드 2 토큰, 모드 3 사전 빌드}
+# 칸마다 따로 판정 (한 칸 실패해도 나머지 계속), 끝에 표. 템플릿이 bin 에 없으면 그 칸 생략.
+results=()
+cell() {
+	local tpl_name=$1 ext=$2 threads=$3 mode=$4 tag=$5
+	local tpl; tpl=$(ls -t "bin/$tpl_name" 2>/dev/null | head -1 || true)
+	if [ -z "$tpl" ]; then results+=("$tag: 생략 (템플릿 없음)"); return 0; fi
+	if ( run_variant "$tpl" "$ext" "$tag" "$threads" "$mode" ); then results+=("$tag: ✔"); else results+=("$tag: ✘"); fail=1; fi
+}
+fail=0
+for mode in 2 3; do
+	cell godot.web.template_release.wasm32.nothreads.zip false false $mode "static-single-m$mode"
+	cell godot.web.template_release.wasm32.zip false true $mode "static-multi-m$mode"
+	cell godot.web.template_release.wasm32.nothreads.dlink.zip true false $mode "dlink-single-m$mode"
+	cell godot.web.template_release.wasm32.dlink.zip true true $mode "dlink-multi-m$mode"
+done
+echo "── 행렬 결과"
+printf '  %s\n' "${results[@]}"
+exit $fail
