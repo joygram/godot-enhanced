@@ -44,6 +44,9 @@ const tag = `${kind}-${version}`;
 const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
 
 // 빌드
+// 릴리스 대상 = 이번 빌드 시작 뒤 생긴 zip·편집기 실행 파일 (job 로그·이전 작업 산출물 제외)
+const releasable = (p, started) => statSync(p).isFile() && statSync(p).mtimeMs > started
+	&& /\.(zip|exe|app|x86_64|arm64)$|\.editor\./.test(p) && !/\.(lib|exp|pdb|log)$/.test(p);
 let files;
 if (via === "local") {
 	const stamp = join(root, "bin", ".release_start");
@@ -52,11 +55,12 @@ if (via === "local") {
 	run(process.platform === "win32" ? "python" : "scons", process.platform === "win32" ? ["-m", "SCons", ...sconsArgs] : sconsArgs);
 	files = readdirSync(join(root, "bin"))
 		.map((f) => join(root, "bin", f))
-		.filter((p) => statSync(p).isFile() && statSync(p).mtimeMs > started && /\.(zip|exe|app|x86_64|arm64)$|\.editor\./.test(p) && !/\.(lib|exp|pdb)$/.test(p));
+		.filter((p) => releasable(p, started));
 } else {
+	const started = Date.now();
 	run(process.execPath, [join("misc", "scripts", "remote_build.mjs"), via, ...sconsArgs, "--wait"]);
 	const dir = join(root, "bin", "remote", via);
-	files = readdirSync(dir).map((f) => join(dir, f)).filter((p) => statSync(p).isFile() && statSync(p).mtimeMs > Date.now() - 6 * 3600e3);
+	files = readdirSync(dir).map((f) => join(dir, f)).filter((p) => releasable(p, started));
 }
 if (!files.length) { console.error("[release] ✘ 올릴 산출물 없음"); process.exit(1); }
 
