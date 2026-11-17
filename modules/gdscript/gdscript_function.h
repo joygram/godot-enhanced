@@ -408,8 +408,6 @@ private:
 	int _lambdas_count = 0;
 
 	int *_code_ptr = nullptr;
-	// godot-enhanced AOT: native body generated from this function's bytecode (patches/gdscript-aot.md).
-	Variant (GDScriptFunction::*_aot_call)(GDScriptInstance *, const Variant **, int, Callable::CallError &, CallState *) = nullptr;
 	const int *_default_arg_ptr = nullptr;
 	mutable Variant *_constants_ptr = nullptr;
 	const StringName *_global_names_ptr = nullptr;
@@ -497,10 +495,17 @@ public:
 	StringName get_global_name(int p_idx) const;
 
 	Variant call(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state = nullptr);
-	// AOT bodies: explicit specializations generated per function (gdscript_vm.cpp included with GD_AOT_CALL).
+	// godot-enhanced AOT: native bodies generated from bytecode (patches/gdscript-aot.md).
+	// Explicit specializations per function (gdscript_vm.cpp included with GD_AOT_CALL).
+	typedef Variant (GDScriptFunction::*AotCall)(GDScriptInstance *, const Variant **, int, Callable::CallError &, CallState *);
 	template <int ID>
 	Variant call_aot(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state);
-	void set_aot_call(Variant (GDScriptFunction::*p_call)(GDScriptInstance *, const Variant **, int, Callable::CallError &, CallState *)) { _aot_call = p_call; }
+	void set_aot_call(AotCall p_call) { _aot_call = p_call; }
+
+private:
+	AotCall _aot_call = nullptr;
+
+public:
 	void debug_get_stack_member_state(int p_line, List<Pair<StringName, int>> *r_stackvars) const;
 
 #ifdef DEBUG_ENABLED
