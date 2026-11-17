@@ -67,4 +67,10 @@ dlink=$(ls -t bin/godot.web.template_release.wasm32.nothreads.dlink.zip 2>/dev/n
 if [ -n "$dlink" ]; then run_variant "$dlink" true dlink; else echo "(dlink 템플릿 없음 → dlink 검사 생략)"; fi
 # 멀티스레드 + dlink + 사전 빌드 (rpg2d 배포 조합) — threads=yes dlink_enabled=yes 템플릿이 있으면
 tdlink=$(ls -t bin/godot.web.template_release.wasm32.dlink.zip 2>/dev/null | head -1 || true)
-if [ -n "$tdlink" ]; then run_variant "$tdlink" true threads-dlink-prebuilt true 3; else echo "(threads dlink 템플릿 없음 → 생략)"; fi
+if [ -n "$tdlink" ]; then
+	# 대조: 사전 빌드 없이 (모드 2) → 실패가 템플릿 탓인지 사전 빌드 탓인지 가름
+	( run_variant "$tdlink" true threads-dlink true 2 ) || tdlink_fail=1
+	run_variant "$tdlink" true threads-dlink-prebuilt true 3
+else
+	echo "(threads dlink 템플릿 없음 → 생략)"
+fi
