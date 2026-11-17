@@ -30,28 +30,20 @@
 
 // .NET 11 Mono runtime pack objects (libmono-wasm-eh-wasm.a) were compiled by the
 // Emscripten 6 clang, whose Wasm EH catch pads call _Unwind_CallPersonality.
-// Emscripten 7 (LLVM 23) libunwind no longer defines it; it keeps the landing
-// pad context behind _Unwind_GetWasmLPadContext. This is the libunwind
-// implementation (LLVM Unwind-wasm.c) on top of that accessor.
+// Emscripten 7 (LLVM 23) moved that function from libunwind into libc++abi as
+// __gxx_wasm_personality_v0 (same body: reset selector, search-phase personality).
+// Keep the old name for the prebuilt pack.
 
 #if defined(__EMSCRIPTEN__) && defined(__WASM_EXCEPTIONS__)
 
 #include <unwind.h>
-#include <unwind_wasm.h>
 
 extern "C" {
 
-_Unwind_Reason_Code __gxx_personality_wasm0(int version, _Unwind_Action actions, uint64_t exception_class,
-		_Unwind_Exception *exception_object, _Unwind_Context *context);
+_Unwind_Reason_Code __gxx_wasm_personality_v0(void *exception_ptr);
 
 __attribute__((weak)) _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
-	_Unwind_Exception *exception_object = (_Unwind_Exception *)exception_ptr;
-	_Unwind_LandingPadContext *lpad_context = _Unwind_GetWasmLPadContext();
-	// Reset the selector.
-	lpad_context->selector = 0;
-	// Wasm has no two-phase unwinding: only the search phase is run here.
-	return __gxx_personality_wasm0(1, _UA_SEARCH_PHASE, exception_object->exception_class, exception_object,
-			(_Unwind_Context *)lpad_context);
+	return __gxx_wasm_personality_v0(exception_ptr);
 }
 
 } // extern "C"
