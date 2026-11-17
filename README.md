@@ -179,8 +179,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.2.0`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.2.0`
+- Version `<godot>-<enhanced>` → `4.7.2-0.2.1`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.2.1`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
