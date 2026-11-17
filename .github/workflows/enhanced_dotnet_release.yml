@@ -15,9 +15,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # Same Emscripten as the .NET 11 Mono runtime pack (dotnet/runtime release/11.0: 6.0.2).
-  EMSDK_VERSION: "6.0.2"
 
 jobs:
   prepare:
@@ -160,9 +157,13 @@ jobs:
           dotnet --version
           dotnet workload install wasm-tools
           dotnet workload list
+      # Emscripten = misc/scripts/emscripten-version (GDScript web templates와 같은 버전)
+      - name: Emscripten version
+        id: emver
+        run: echo "version=$(tr -d '[:space:]' < misc/scripts/emscripten-version)" >> "$GITHUB_OUTPUT"
       - uses: mymindstorm/setup-emsdk@v14
         with:
-          version: ${{ env.EMSDK_VERSION }}
+          version: ${{ steps.emver.outputs.version }}
       - uses: actions/download-artifact@v4
         with:
           name: glue

@@ -7,7 +7,7 @@
 # 선택 환경 변수:
 #   BUILD_AGENT_TOKEN  공유 토큰 (없으면 기존 값 → 없으면 생성)
 #   REPO_DIR           소스 위치 (기본 ~/workspace/godot-enhanced)
-#   (기본으로 전부 설치: Emscripten 6.0.2, .NET 11 + wasm-tools, 웹 측정 도구)
+#   (기본으로 전부 설치: Emscripten = misc/scripts/emscripten-version, .NET 11 + wasm-tools, 웹 측정 도구)
 #   WITH_EMSDK=0 / WITH_DOTNET=0  해당 도구 빼기
 #   BUILD_AGENT_PORT   기본 8790
 #   SKIP_SERVICE=1     서비스 등록 건너뜀 (에이전트가 스스로 재설치할 때)
