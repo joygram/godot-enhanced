@@ -6,12 +6,15 @@
 
 ## 방식
 
-- VM 명령 본문 → `modules/gdscript/gdscript_vm_ops.inc` 분리, VM·AOT 공용 (VM 동작 변화 없음)
-- 함수마다 C++ 한 개:
-  - 바이트코드 → `static const int code[]` (상수)
-  - 명령마다 라벨 `L<ip>:` + 그 명령 본문만 include (`AOT_OP`·`ip` 상수)
-  - 순차 진행·점프 → `switch (ip)` → clang 상수 전파로 직접 점프
-  - 피연산자 주소 = 상수 → 스택 고정 오프셋
+- VM 명령 본문 영역(`gdscript_vm.cpp`) 재사용 — 본문 수정 없음, 경계 표시만
+- 명령 1개 = `GDScriptFunction` 멤버 함수 템플릿 `aot_op<OP, CODE, IP>(지역 변수 참조…)`
+  - 본문 영역 include, `OPCODE(x)` → `} if constexpr (OP == x) {` → 그 명령만 남음
+  - 본문 파싱 = 파일당 1회 → 컴파일 시간 안 터짐
+  - `DISPATCH_OPCODE` → 다음 ip 반환, `OPCODE_BREAK` → 종료 코드 반환
+  - `CODE` = 함수 바이트코드 상수 배열 → 피연산자 주소 상수 접힘
+- 함수 1개 = 명령마다 `aot_op` 호출 + `switch (ip)` → clang 상수 전파로 직접 점프
+- 지역 변수(15개: stack·ip·variant_addresses·err_text·retvalue·script·call_depth·line·awaited …) → 참조로 전달
+- 함께 떨어지는 라벨 묶음 3곳 → `OPCODE2`·`OPCODE3` 매크로 (VM 동작 동일)
 - 스택·인자·반환·오류 처리 = VM `call` 앞뒤 그대로
 
 ## 범위
