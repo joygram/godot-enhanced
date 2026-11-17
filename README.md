@@ -17,7 +17,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Loader sees the gzip signature → inflates with the browser's `DecompressionStream`. No server config
 - File names unchanged → no double-decompress if the host also gzips
 - Loading bar counts downloaded (compressed) bytes
-- Measured: gzip -6 on existing exports, 2026-11-17. Browser run: not yet verified
+- Measured: gzip -6 on existing exports, 2026-11-17
+- Verified: headless Chrome boots a pre-compressed export (wasm 9.7 MB on disk), 0 errors, heap unchanged (38.4 MB)
 - Not yet: dlink `.side.wasm`, C# runtime files (loaded outside the Godot preloader)
 
 ## 🚀 0.1.1 — C# on the web, and it's light
@@ -196,7 +197,8 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 웹 프리셋 옵션 **`compression/precompress`** (기본 꺼짐) → `.pck`·`.wasm` gzip 압축
 - 로더가 gzip 서명 보고 브라우저 `DecompressionStream` 으로 풂. itch.io 등 서버 설정 불필요
 - 파일명 유지 → 호스트가 또 gzip 해도 이중 해제 없음
-- 실측: 기존 내보내기에 gzip -6, 2026-11-17. 브라우저 실행: 미검증
+- 실측: 기존 내보내기에 gzip -6, 2026-11-17
+- 검증: 미리 압축한 내보내기(디스크 wasm 9.7 MB) headless Chrome 부팅, 오류 0, 힙 변화 없음(38.4 MB)
 - 아직 안 됨: dlink `.side.wasm`, C# 런타임 파일
 
 ### 🚀 0.1.1 — C#이 웹에서 돌아가고, 가볍다
