@@ -48,6 +48,20 @@
     <Error Text="The project or one of its dependencies references GodotSharp packages which is incompatible with the active Godot C# bindings. The active C# bindings is Godot .NET." Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('GodotSharp.dll'))" />
   </Target>
 
+  <!--
+    godot-enhanced: trimming on by default for the web and Android (Mono runtime, smaller download / APK).
+    Unused framework and engine API code is removed. The game assembly stays whole (Godot finds scripts
+    by reflection). GodotSharp is trimmed too (YangVillage web: GodotSharp.dll 5.4 → 2.6 MB, runs and saves).
+    A project that needs more reflection sets PublishTrimmed=false or adds TrimmerRootAssembly items.
+    iOS uses NativeAOT and roots its assemblies in iOS.targets.
+  -->
+  <PropertyGroup Condition=" '$(GodotTargetPlatform)' == 'web' or '$(GodotTargetPlatform)' == 'android' ">
+    <PublishTrimmed Condition=" '$(PublishTrimmed)' == '' ">true</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(GodotTargetPlatform)' == 'web' or '$(GodotTargetPlatform)' == 'android' ">
+    <TrimmerRootAssembly Include="$(TargetName)" />
+  </ItemGroup>
+
   <!-- Platform-specific build targets. -->
   <Import Project="$(MSBuildThisFileDirectory)\Android.targets" Condition=" '$(GodotTargetPlatform)' == 'android' " />
   <Import Project="$(MSBuildThisFileDirectory)\Browser.targets" Condition=" '$(GodotTargetPlatform)' == 'web' " />
