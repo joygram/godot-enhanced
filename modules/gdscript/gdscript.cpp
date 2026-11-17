@@ -31,6 +31,7 @@
 #include "gdscript.h"
 
 #include "gdscript_analyzer.h"
+#include "gdscript_aot.h"
 #include "gdscript_cache.h"
 #include "gdscript_compiler.h"
 #include "gdscript_parser.h"
@@ -949,6 +950,9 @@ Error GDScript::reload(bool p_keep_state) {
 	}
 #endif
 	}
+
+	// godot-enhanced AOT: functions with a generated native body (matching bytecode) skip the VM loop.
+	GDScriptAOT::bind(this);
 
 	// This script's parser is released above; compiling dependencies now keeps only their own trees alive.
 	err = GDScriptCache::finish_compiling(path);

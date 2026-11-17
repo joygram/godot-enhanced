@@ -501,6 +501,9 @@ public:
 	template <int ID>
 	Variant call_aot(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state);
 	void set_aot_call(AotCall p_call) { _aot_call = p_call; }
+	bool has_aot_call() const { return _aot_call != nullptr; }
+	const int *get_code() const { return _code_ptr; }
+	int get_code_size() const { return _code_size; }
 
 private:
 	AotCall _aot_call = nullptr;
@@ -510,7 +513,8 @@ public:
 
 #ifdef DEBUG_ENABLED
 	void _profile_native_call(uint64_t p_t_taken, const String &p_function_name, const String &p_instance_class_name = String());
-	void disassemble(const Vector<String> &p_code_lines) const;
+	// r_offsets: collect instruction start offsets instead of printing (GDScript AOT generator).
+	void disassemble(const Vector<String> &p_code_lines, Vector<int> *r_offsets = nullptr) const;
 #endif
 
 	GDScriptFunction();

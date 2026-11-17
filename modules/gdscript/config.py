@@ -13,6 +13,8 @@ def get_opts(platform):
     return [
         # godot-enhanced AOT: compile every opcode body once in AOT mode (patches/gdscript-aot.md). Release templates only.
         BoolVariable("gdscript_aot_check", "Compile the GDScript AOT opcode check", False),
+        # Folder of generated AOT C++ (export with GODOT_GDSCRIPT_AOT_DIR). Empty = no AOT bodies.
+        ("gdscript_aot_dir", "Folder of generated GDScript AOT C++", ""),
     ]
 
 

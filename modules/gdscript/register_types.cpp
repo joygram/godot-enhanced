@@ -31,6 +31,7 @@
 #include "register_types.h"
 
 #include "gdscript.h"
+#include "gdscript_aot.h"
 #include "gdscript_cache.h"
 #include "gdscript_parser.h"
 #include "gdscript_prebuild.h"
@@ -53,8 +54,10 @@
 #include "tests/test_gdscript.h"
 #endif
 
+#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
+#include "core/os/os.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
 
@@ -88,11 +91,27 @@ class EditorExportGDScript : public EditorExportPlugin {
 	EditorExportPreset::ScriptExportMode script_mode = DEFAULT_SCRIPT_MODE;
 	int prebuilt_count = 0;
 	int tokens_only_count = 0;
+	// godot-enhanced AOT: GODOT_GDSCRIPT_AOT_DIR → C++ per prebuilt script + registry (patches/gdscript-aot.md).
+	String aot_dir;
+	int aot_next_id = 0;
+	int aot_file_count = 0;
+	Vector<String> aot_registry;
+	Vector<String> aot_skipped;
 
 protected:
 	virtual void _export_end() override {
 		if (script_mode == EditorExportPreset::MODE_SCRIPT_PREBUILT) {
 			print_line(vformat("GDScript prebuild: %d prebuilt, %d as tokens.", prebuilt_count, tokens_only_count));
+		}
+		if (!aot_dir.is_empty()) {
+			Ref<FileAccess> registry = FileAccess::open(aot_dir.path_join("gd_aot_registry.cpp"), FileAccess::WRITE);
+			if (registry.is_valid()) {
+				registry->store_string(GDScriptAOT::registry_source(aot_registry));
+			}
+			for (const String &skipped : aot_skipped) {
+				print_verbose("GDScript AOT: VM kept for " + skipped);
+			}
+			print_line(vformat("GDScript AOT: %d functions in %d files, %d kept on the VM → %s", aot_registry.size(), aot_file_count, aot_skipped.size(), aot_dir));
 		}
 	}
 
@@ -100,6 +119,23 @@ protected:
 		script_mode = DEFAULT_SCRIPT_MODE;
 		prebuilt_count = 0;
 		tokens_only_count = 0;
+		aot_next_id = 0;
+		aot_file_count = 0;
+		aot_registry.clear();
+		aot_skipped.clear();
+		aot_dir = OS::get_singleton()->get_environment("GODOT_GDSCRIPT_AOT_DIR");
+		if (!aot_dir.is_empty()) {
+			DirAccess::make_dir_recursive_absolute(aot_dir);
+			// Fresh set per export: stale bodies would not match the new registry ids.
+			Ref<DirAccess> dir = DirAccess::open(aot_dir);
+			if (dir.is_valid()) {
+				for (const String &file : dir->get_files()) {
+					if (file.begins_with("gd_aot_") && file.ends_with(".cpp")) {
+						dir->remove(file);
+					}
+				}
+			}
+		}
 
 		const Ref<EditorExportPreset> &preset = get_export_preset();
 		if (preset.is_valid()) {
@@ -133,6 +169,16 @@ protected:
 			if (!prebuilt.is_empty()) {
 				file = GDScriptPrebuild::pack(file, prebuilt);
 				prebuilt_count++;
+				// AOT only for prebuilt scripts: the runtime bytecode is exactly the one stored here.
+				if (!aot_dir.is_empty()) {
+					String source = GDScriptAOT::generate(script.ptr(), aot_next_id, aot_registry, aot_skipped);
+					if (!source.is_empty()) {
+						Ref<FileAccess> out = FileAccess::open(aot_dir.path_join(vformat("gd_aot_%04d.cpp", aot_file_count++)), FileAccess::WRITE);
+						if (out.is_valid()) {
+							out->store_string(source);
+						}
+					}
+				}
 			} else {
 				print_verbose(vformat("GDScript prebuild: %s kept as tokens (%s).", p_path, script.is_valid() ? error : String("not loadable")));
 				tokens_only_count++;

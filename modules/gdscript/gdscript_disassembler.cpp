@@ -98,10 +98,14 @@ static String _disassemble_address(const GDScript *p_script, const GDScriptFunct
 	return "<err>";
 }
 
-void GDScriptFunction::disassemble(const Vector<String> &p_code_lines) const {
+void GDScriptFunction::disassemble(const Vector<String> &p_code_lines, Vector<int> *r_offsets) const {
 #define DADDR(m_ip) (_disassemble_address(_script, *this, _code_ptr[ip + m_ip]))
 
 	for (int ip = 0; ip < _code_size;) {
+		// godot-enhanced AOT: instruction start offsets instead of printing (patches/gdscript-aot.md).
+		if (r_offsets) {
+			r_offsets->push_back(ip);
+		}
 		StringBuilder text;
 		int incr = 0;
 
@@ -1325,7 +1329,7 @@ void GDScriptFunction::disassemble(const Vector<String> &p_code_lines) const {
 		}
 
 		ip += incr;
-		if (text.get_string_length() > 0) {
+		if (!r_offsets && text.get_string_length() > 0) {
 			print_line(text.as_string());
 		}
 	}

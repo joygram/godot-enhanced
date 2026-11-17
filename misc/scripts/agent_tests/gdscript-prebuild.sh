@@ -5,7 +5,7 @@
 # 필요: bin/godot.linuxbsd.editor.x86_64
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-editor=$(ls -t bin/godot.linuxbsd.editor.* 2>/dev/null | grep -v '\.\(zip\|o\|a\|mono\)$' | head -1 || true)
+editor=$(ls -t bin/godot.*.editor.* 2>/dev/null | grep -v '\.\(zip\|o\|a\|mono\|app\)$' | head -1 || true)
 [ -n "$editor" ] || { echo "✘ 에디터 없음"; exit 1; }
 chmod +x "$editor"
 w="${JOB_DIR:-/tmp}/gdscript-prebuild"; rm -rf "$w"; p="$w/proj"; mkdir -p "$p"
