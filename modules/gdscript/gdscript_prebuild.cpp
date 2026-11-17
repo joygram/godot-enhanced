@@ -281,9 +281,11 @@ bool save_table(Writer &w, const Vector<T> &p_table, const HashMap<uintptr_t, Fn
 	return true;
 }
 
+} // namespace
+
 // ---------------------------------------------------------------- save
 
-struct Saver {
+struct GDScriptPrebuild::Saver {
 	const GDScript *root = nullptr;
 	String error;
 
@@ -555,7 +557,7 @@ struct Saver {
 
 // ---------------------------------------------------------------- apply
 
-struct Applier {
+struct GDScriptPrebuild::Applier {
 	GDScript *root = nullptr;
 	Reader r;
 	String error;
@@ -942,8 +944,6 @@ struct Applier {
 		return true;
 	}
 };
-
-} // namespace
 
 // ---------------------------------------------------------------- public
 

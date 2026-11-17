@@ -41,6 +41,10 @@ class GDScript;
 // tokens when the data is unusable (other engine build, unsupported constant, missing dependency).
 // Design: patches/gdscript-prebuild.md
 class GDScriptPrebuild {
+	// Nested so they share the friendship GDScript / GDScriptFunction / GDScriptCache grant.
+	struct Saver;
+	struct Applier;
+
 public:
 	static constexpr uint32_t FORMAT_VERSION = 1;
 
