@@ -280,9 +280,11 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 	 * @ignore
 	 * @param {string} loadPath
 	 * @param {Response} response
+	 * @param {?string=} sideUrl Blob URL of the preloaded side module (extensions exports), or null.
 	 */
-	Config.prototype.getModuleConfig = function (loadPath, response) {
+	Config.prototype.getModuleConfig = function (loadPath, response, sideUrl) {
 		let r = response;
+		const sideName = `${loadPath}.side.wasm`;
 		const gdext = this.gdextensionLibs;
 		return {
 			'print': this.onPrint,
@@ -306,6 +308,10 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 				return {};
 			},
 			'locateFile': function (path) {
+				// godot-enhanced: side module already fetched (and inflated) by the preloader → blob URL.
+				if (sideUrl && (path === sideName || path.endsWith('.side.wasm'))) {
+					return sideUrl;
+				}
 				if (!path.startsWith('godot.')) {
 					return path;
 				} else if (path.endsWith('.audio.worklet.js')) {

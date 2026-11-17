@@ -546,10 +546,11 @@ Error EditorExportPlatformWeb::export_project(const Ref<EditorExportPreset> &p_p
 		return error;
 	}
 
-	// godot-enhanced: gzip .pck/.wasm in place. The web preloader inflates them (gzip signature check),
+	// godot-enhanced: gzip .pck/.wasm/.side.wasm in place. The web preloader inflates them (gzip signature check),
 	// so hosts without Content-Encoding control (itch.io, portals) still serve the small files.
+	// A missing file (.side.wasm without extensions support) is skipped.
 	if ((bool)p_preset->get("compression/precompress")) {
-		const String targets[] = { pck_path, base_path + ".wasm" };
+		const String targets[] = { pck_path, base_path + ".wasm", base_path + ".side.wasm" };
 		for (const String &target : targets) {
 			Vector<uint8_t> src = FileAccess::get_file_as_bytes(target);
 			if (src.size() < 2 || (src[0] == 0x1f && src[1] == 0x8b)) {
@@ -578,6 +579,11 @@ Error EditorExportPlatformWeb::export_project(const Ref<EditorExportPreset> &p_p
 	f = FileAccess::open(base_path + ".wasm", FileAccess::READ);
 	if (f.is_valid()) {
 		file_sizes[base_name + ".wasm"] = (uint64_t)f->get_length();
+	}
+	// godot-enhanced: listed only for extensions (dlink) exports → the loader preloads it (progress, gzip inflate).
+	f = FileAccess::open(base_path + ".side.wasm", FileAccess::READ);
+	if (f.is_valid()) {
+		file_sizes[base_name + ".side.wasm"] = (uint64_t)f->get_length();
 	}
 
 	// Read the HTML shell file (custom or from template).

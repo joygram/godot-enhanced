@@ -44,7 +44,13 @@ func _ready() -> void:
 EOF
 printf '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="1"]\n\n[node name="Main" type="Node"]\nscript = ExtResource("1")\n' > "$proj/main.tscn"
 printf 'config_version=5\n\n[application]\n\nconfig/name="web-memory"\nrun/main_scene="res://main.tscn"\n' > "$proj/project.godot"
-cat > "$proj/export_presets.cfg" <<EOF
+"$editor" --headless --path "$proj" --import >/dev/null 2>&1 || true
+
+# 내보내기 + 브라우저 측정. $1 = 템플릿, $2 = extensions_support(dlink), $3 = 결과 이름
+run_variant() {
+	local tpl=$1 ext=$2 tag=$3 o="$JOB_DIR/web-out-$3"
+	rm -rf "$o"; mkdir -p "$o"
+	cat > "$proj/export_presets.cfg" <<EOF
 [preset.0]
 name="Web"
 platform="Web"
@@ -55,21 +61,27 @@ exclude_filter=""
 export_path=""
 [preset.0.options]
 custom_template/debug=""
-custom_template/release="$root/$template"
-variant/extensions_support=false
+custom_template/release="$root/$tpl"
+variant/extensions_support=$ext
 variant/thread_support=false
 vram_texture_compression/for_desktop=true
 html/export_icon=false
 compression/precompress=true
 EOF
+	"$editor" --headless --path "$proj" --export-release Web "$o/index.html" 2>&1 | grep -E '^(ERROR|WARNING: .*export)' || true
+	[ -f "$o/index.wasm" ] || { echo "✘ [$tag] 내보내기 실패"; exit 1; }
+	# compression/precompress: .pck·.wasm(·.side.wasm) 이 gzip 서명(1f8b)으로 시작 → 브라우저 부팅 = 로더 해제 검증
+	local files="index.wasm index.pck"
+	[ "$ext" = true ] && files="$files index.side.wasm"
+	for f in $files; do
+		[ "$(head -c2 "$o/$f" | od -An -tx1 | tr -d ' \n')" = "1f8b" ] || { echo "✘ [$tag] $f 미압축"; exit 1; }
+		echo "[$tag] precompress: $f $(stat -c%s "$o/$f") B"
+	done
+	node misc/scripts/web_memory.mjs "$o" "${WEB_MEMORY_SECONDS:-30}" "$JOB_DIR/web-memory-$tag.json"
+	echo "✔ [$tag] web-memory 통과"
+}
 
-"$editor" --headless --path "$proj" --import >/dev/null 2>&1 || true
-"$editor" --headless --path "$proj" --export-release Web "$out/index.html" 2>&1 | grep -E '^(ERROR|WARNING: .*export)' || true
-[ -f "$out/index.wasm" ] || { echo "✘ 내보내기 실패"; exit 1; }
-# compression/precompress: .pck·.wasm 이 gzip 서명(1f8b)으로 시작해야 함 → 브라우저 부팅 = 로더 해제 검증
-for f in index.wasm index.pck; do
-	[ "$(head -c2 "$out/$f" | od -An -tx1 | tr -d ' \n')" = "1f8b" ] || { echo "✘ $f 미압축"; exit 1; }
-done
-echo "precompress: wasm $(stat -c%s "$out/index.wasm") B, pck $(stat -c%s "$out/index.pck") B"
-node misc/scripts/web_memory.mjs "$out" "${WEB_MEMORY_SECONDS:-30}" "$JOB_DIR/web-memory.json"
-echo "✔ web-memory 통과"
+run_variant "$template" false static
+# dlink 템플릿이 있으면 (platform=web dlink_enabled=yes) side module 경로도 검사
+dlink=$(ls -t bin/godot.web.template_release.wasm32.nothreads.dlink.zip 2>/dev/null | head -1 || true)
+if [ -n "$dlink" ]; then run_variant "$dlink" true dlink; else echo "(dlink 템플릿 없음 → dlink 검사 생략)"; fi

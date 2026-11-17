@@ -86,14 +86,28 @@ const Engine = (function () {
 					Engine.load(basePath, this.config.fileSizes[`${basePath}.wasm`]);
 				}
 				const me = this;
+				// godot-enhanced: extensions (dlink) exports list the side module in fileSizes →
+				// fetch it through the preloader (progress, gzip inflate) and hand Emscripten a blob URL.
+				const sideName = `${loadPath}.side.wasm`;
+				let sidePromise = Promise.resolve(null);
+				if (me.config.fileSizes[sideName] !== undefined) {
+					sidePromise = preloader.loadPromise(sideName, me.config.fileSizes[sideName]).then(function (buf) {
+						return URL.createObjectURL(new Blob([buf], { type: 'application/wasm' }));
+					});
+				}
 				function doInit(promise) {
 					// Care! Promise chaining is bogus with old emscripten versions.
 					// This caused a regression with the Mono build (which uses an older emscripten version).
 					// Make sure to test that when refactoring.
 					return new Promise(function (resolve, reject) {
-						promise.then(function (response) {
+						Promise.all([promise, sidePromise]).then(function (loaded) {
+							const response = loaded[0];
+							const sideUrl = loaded[1];
 							const cloned = new Response(response.clone().body, { 'headers': [['content-type', 'application/wasm']] });
-							Godot(me.config.getModuleConfig(loadPath, cloned)).then(function (module) {
+							Godot(me.config.getModuleConfig(loadPath, cloned, sideUrl)).then(function (module) {
+								if (sideUrl) {
+									URL.revokeObjectURL(sideUrl);
+								}
 								const paths = me.config.persistentPaths;
 								module['initFS'](paths).then(function (err) {
 									me.rtenv = module;
