@@ -6,6 +6,8 @@ echo "ANDROID_HOME=${ANDROID_HOME:-} ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-} ANDR
 for d in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/android-sdk" /opt/android-sdk /usr/lib/android-sdk; do
 	[ -n "$d" ] && [ -d "$d" ] && echo "sdk: $d → ndk: $(ls "$d/ndk" 2>/dev/null | tr '\n' ' ') build-tools: $(ls "$d/build-tools" 2>/dev/null | tr '\n' ' ')"
 done
+echo "찾기 (ndk·cmdline-tools·sdkmanager):"
+find / -xdev -maxdepth 6 \( -type d \( -name ndk -o -name cmdline-tools -o -name platform-tools \) -o -name sdkmanager \) 2>/dev/null | grep -v '/proc/' | head -20
 echo "java: $(command -v java) $(java -version 2>&1 | head -1)"
 echo "sdkmanager: $(command -v sdkmanager || echo -)"
 echo "dotnet workloads: $(dotnet workload list 2>/dev/null | tail -n +4 | tr '\n' ' ')"
