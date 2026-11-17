@@ -292,8 +292,11 @@ namespace GodotTools.Export
                         string ndk = FindAndroidNdk()
                             ?? throw new InvalidOperationException("Android NativeAOT (dotnet/android_use_linux_bionic) needs the Android NDK. Set ANDROID_NDK_ROOT or install an NDK under the Android SDK (Editor Settings → export/android/android_sdk_path).");
                         extraProperties.Add($"GodotAndroidNdkPath={ndk}");
-                        // Global, not only in Android.props: restore picks the runtime pack before the SDK props see it.
+                        // Global properties: restore picks the runtime pack before the SDK props are read.
+                        // linux-bionic is not a .NET-supported publish target yet → DisableUnsupportedError.
                         extraProperties.Add("PublishAot=true");
+                        extraProperties.Add("PublishAotUsingRuntimePack=true");
+                        extraProperties.Add("DisableUnsupportedError=true");
                     }
                     if (!BuildManager.PublishProjectBlocking(buildConfig, platform,
                             runtimeIdentifier, publishOutputDir, includeDebugSymbols, extraProperties))

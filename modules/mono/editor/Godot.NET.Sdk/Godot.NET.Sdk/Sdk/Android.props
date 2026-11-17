@@ -4,12 +4,10 @@
     linux-bionic-<arch>; the export plugin passes GodotAndroidNdkPath (NDK root). The NDK clang links
     lib<Name>.so, which the engine loads instead of the Mono runtime (gd_mono try_load_native_aot_library).
   -->
+  <!-- PublishAot, PublishAotUsingRuntimePack, DisableUnsupportedError come as global properties from the
+       export plugin (restore picks the runtime pack before these props are read). -->
   <PropertyGroup Condition=" $(RuntimeIdentifier.StartsWith('linux-bionic')) ">
     <GodotAndroidNativeAot>true</GodotAndroidNativeAot>
-    <PublishAot>true</PublishAot>
-    <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
-    <!-- linux-bionic is not a .NET-supported publish target yet; it works with the NDK toolchain below. -->
-    <DisableUnsupportedError>true</DisableUnsupportedError>
     <NativeLib>Shared</NativeLib>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
 
