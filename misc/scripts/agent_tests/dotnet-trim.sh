@@ -24,7 +24,7 @@ rm -rf "$HOME/.nuget/packages/godot.net.sdk/$ver" "$HOME/.nuget/packages/godotsh
 
 work="${JOB_DIR:-/tmp}/trim"; rm -rf "$work"; mkdir -p "$work/p"
 cat > "$work/p/nuget.config" <<EOF
-<configuration><packageSources><add key="local" value="$root/bin/nuget" /></packageSources></configuration>
+<configuration><packageSources><clear /><add key="local" value="$root/bin/nuget" /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /></packageSources></configuration>
 EOF
 cat > "$work/p/Game.csproj" <<EOF
 <Project Sdk="Godot.NET.Sdk/$ver">

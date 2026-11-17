@@ -62,7 +62,7 @@ run_trim() {
 	local p="$w/proj"; mkdir -p "$p" "$w/out"
 	echo "── 표본 C# 프로젝트 (GodotTrimGodotSharp=$trim)"
 	cat > "$p/nuget.config" <<EOF
-<configuration><packageSources><add key="local" value="$root/bin/nuget" /></packageSources></configuration>
+<configuration><packageSources><clear /><add key="local" value="$root/bin/nuget" /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /></packageSources></configuration>
 EOF
 	cat > "$p/Game.csproj" <<EOF
 <Project Sdk="Godot.NET.Sdk/$ver">
