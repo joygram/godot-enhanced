@@ -2,6 +2,14 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🧵 0.2.1 — Web templates on Emscripten 7.0.0: threads + dlink boots
+
+- Web templates (GDScript): Emscripten 6.0.2 → **7.0.0**, set in `misc/scripts/emscripten-version`
+- Fixed: threads + dlink crashed at startup (`setting 'sig'`, then GL `LinkError`)
+- Cause: 6.0.2 bound GL aliases to wasm exports before instantiation
+- GDExtension web builds: rebuild with 7.0.0 (6.0.2 side modules → `resolved is not a function`)
+- C# `.mono` web templates stay on 6.0.2 (Mono runtime pack)
+
 ## ⚡ 0.2.0 — GDScript prebuild, export templates locked to the release
 
 **GDScript prebuild** (`script_export_mode=3`)
@@ -244,7 +252,8 @@ Apply all three (as above), or only the ones you need — each patch also applie
 - GitHub Actions ([enhanced_web_template.yml](.github/workflows/enhanced_web_template.yml)) builds the Web template from this branch and publishes it on [Releases](https://github.com/joygram/godot-enhanced/releases).
 - Assets: `godot.web.template_release.wasm32.nothreads.dlink.zip` (GDExtension support), `godot.web.template_release.wasm32.nothreads.zip`.
 - Use: Web export preset → Custom Template → Release → the zip.
-- Emscripten 6.0.2 (GDScript and C# alike). With dlink, your GDExtension web builds must use the same version.
+- Emscripten 7.0.0 (`misc/scripts/emscripten-version`); C# `.mono` templates 6.0.2.
+- With dlink, your GDExtension web builds must use the same version.
 - These are the GDScript templates (no threads). C# web projects need the separate `.mono` templates below.
 - GDExtension without dlink: build the template with `static_gdextensions=<name>` (list: [misc/static_gdextensions.json](misc/static_gdextensions.json)).
 
