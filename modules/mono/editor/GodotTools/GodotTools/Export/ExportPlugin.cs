@@ -303,6 +303,25 @@ namespace GodotTools.Export
                     string nativeAotPath = Path.Combine(publishOutputDir,
                         $"{GodotSharpDirs.ProjectAssemblyName}.{soExt}");
 
+                    // godot-enhanced: .NET 11 NativeAOT names shared libraries lib<Name>.<ext> (UseNativeLibPrefix
+                    // does not reach the runtime-pack ILCompiler used for iOS). Godot looks for <Name>.<ext>
+                    // here, in the xcframework and at runtime (gd_mono), so drop the prefix once, right after publish.
+                    string prefixedNativeAotPath = Path.Combine(publishOutputDir,
+                        $"lib{GodotSharpDirs.ProjectAssemblyName}.{soExt}");
+                    if (!File.Exists(nativeAotPath) && File.Exists(prefixedNativeAotPath))
+                    {
+                        File.Move(prefixedNativeAotPath, nativeAotPath);
+                        if (soExt == "dylib")
+                        {
+                            // The app links the xcframework by install name → must match the new file name.
+                            using var installName = System.Diagnostics.Process.Start("install_name_tool",
+                                ["-id", $"@rpath/{GodotSharpDirs.ProjectAssemblyName}.dylib", nativeAotPath]);
+                            installName?.WaitForExit();
+                            if (installName == null || installName.ExitCode != 0)
+                                throw new InvalidOperationException($"install_name_tool failed for '{nativeAotPath}'.");
+                        }
+                    }
+
                     if (!File.Exists(assemblyPath) && !File.Exists(nativeAotPath))
                     {
                         throw new NotSupportedException(

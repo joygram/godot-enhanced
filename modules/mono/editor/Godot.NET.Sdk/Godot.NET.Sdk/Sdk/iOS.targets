@@ -61,15 +61,4 @@
     </ItemGroup>
     <Copy SourceFiles="@(SymbolFiles)" DestinationFolder="$(PublishDir)$(TargetName).framework.dSYM"/>
   </Target>
-
-  <!-- godot-enhanced: .NET 11 NativeAOT publishes lib<Name>.dylib (UseNativeLibPrefix does not reach the
-       runtime-pack ILCompiler). Godot's export plugin and gd_mono runtime look for <Name>.dylib;
-       the install name is already @rpath/<Name>.dylib (LinkerArg above).
-       Literal .dylib: ILCompiler properties (NativeBinaryExt) live only in the inner publish build. -->
-  <Target Name="GodotDropNativeLibPrefix"
-          AfterTargets="Publish"
-          Condition="Exists('$(PublishDir)lib$(TargetName).dylib')">
-    <Move SourceFiles="$(PublishDir)lib$(TargetName).dylib" DestinationFiles="$(PublishDir)$(TargetName).dylib" />
-  </Target>
-
 </Project>
