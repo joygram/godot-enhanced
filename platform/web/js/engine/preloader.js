@@ -26,6 +26,48 @@ const Preloader = /** @constructor */ function () { // eslint-disable-line no-un
 		}), { headers: response.headers });
 	}
 
+	// godot-enhanced: export option `compression/precompress` gzips .pck/.wasm on disk.
+	// Detect the gzip signature (1f 8b) and inflate in the browser, so no server headers are needed.
+	// Progress keeps counting the downloaded (compressed) bytes, matching the exported fileSizes.
+	function getInflatedResponse(response) {
+		if (typeof DecompressionStream === 'undefined') {
+			return Promise.resolve(response);
+		}
+		const reader = response.body.getReader();
+		return reader.read().then(function (first) {
+			const head = first.value;
+			const gz = !!head && head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+			let stream = new ReadableStream({
+				start: function (controller) {
+					if (head) {
+						controller.enqueue(head);
+					}
+					if (first.done) {
+						controller.close();
+					}
+				},
+				pull: function (controller) {
+					return reader.read().then(function (result) {
+						if (result.value) {
+							controller.enqueue(result.value);
+						}
+						if (result.done) {
+							controller.close();
+						}
+					});
+				},
+			});
+			if (!gz) {
+				return new Response(stream, { headers: response.headers });
+			}
+			stream = stream.pipeThrough(new DecompressionStream('gzip'));
+			const headers = new Headers(response.headers);
+			headers.delete('Content-Length');
+			headers.delete('Content-Encoding');
+			return new Response(stream, { headers: headers });
+		});
+	}
+
 	function loadFetch(file, tracker, fileSize, raw) {
 		tracker[file] = {
 			total: fileSize || 0,
@@ -36,11 +78,12 @@ const Preloader = /** @constructor */ function () { // eslint-disable-line no-un
 			if (!response.ok) {
 				return Promise.reject(new Error(`Failed loading file '${file}'`));
 			}
-			const tr = getTrackedResponse(response, tracker[file]);
-			if (raw) {
-				return Promise.resolve(tr);
-			}
-			return tr.arrayBuffer();
+			return getInflatedResponse(getTrackedResponse(response, tracker[file])).then(function (tr) {
+				if (raw) {
+					return tr;
+				}
+				return tr.arrayBuffer();
+			});
 		});
 	}
 

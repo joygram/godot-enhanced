@@ -34,6 +34,7 @@
 #include "run_icon_svg.gen.h"
 
 #include "core/config/project_settings.h"
+#include "core/io/compression.h"
 #include "core/io/dir_access.h"
 #include "core/io/zip_io.h"
 #include "core/os/os.h"
@@ -382,6 +383,7 @@ void EditorExportPlatformWeb::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "html/canvas_resize_policy", PROPERTY_HINT_ENUM, "None,Project,Adaptive"), 2));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/focus_canvas_on_start"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/experimental_virtual_keyboard"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "compression/precompress"), false)); // godot-enhanced: gzip .pck/.wasm, inflated by the loader.
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "progressive_web_app/enabled"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "progressive_web_app/ensure_cross_origin_isolation_headers"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "progressive_web_app/offline_page", PROPERTY_HINT_FILE, "*.html"), ""));
@@ -542,6 +544,29 @@ Error EditorExportPlatformWeb::export_project(const Ref<EditorExportPreset> &p_p
 	if (error) {
 		// Message is supplied by the subroutine method.
 		return error;
+	}
+
+	// godot-enhanced: gzip .pck/.wasm in place. The web preloader inflates them (gzip signature check),
+	// so hosts without Content-Encoding control (itch.io, portals) still serve the small files.
+	if ((bool)p_preset->get("compression/precompress")) {
+		const String targets[] = { pck_path, base_path + ".wasm" };
+		for (const String &target : targets) {
+			Vector<uint8_t> src = FileAccess::get_file_as_bytes(target);
+			if (src.size() < 2 || (src[0] == 0x1f && src[1] == 0x8b)) {
+				continue;
+			}
+			Vector<uint8_t> dst;
+			dst.resize(Compression::get_max_compressed_buffer_size(src.size(), Compression::MODE_GZIP));
+			const int64_t len = Compression::compress(dst.ptrw(), src.ptr(), src.size(), Compression::MODE_GZIP);
+			if (len <= 0) {
+				add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not compress file: \"%s\"."), target));
+				return ERR_CANT_CREATE;
+			}
+			error = _write_or_error(dst.ptr(), len, target);
+			if (error != OK) {
+				return error;
+			}
+		}
 	}
 
 	// Parse generated file sizes (pck and wasm, to help show a meaningful loading bar).

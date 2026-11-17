@@ -1,6 +1,24 @@
-# godot-enhanced — Godot 4.7.2 with Korean IME fix, Web (WASM) memory patch and C# web export
+# godot-enhanced — Godot 4.7.2 with smaller web downloads, Web (WASM) memory patch, C# web export and Korean IME fix
 
-Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; three patches on top.
+Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
+
+## 🗜️ 0.1.3 — web download up to −75%, no server setup
+
+> Godot web games are big, and most hosts (itch.io, game portals) don't let you set compression headers. godot-enhanced compresses at export and unpacks in the browser.
+
+| Web download | Before | **Pre-compressed** | |
+|---|---|---|---|
+| Engine `.wasm`, GDScript template | 36.4 MB | **9.3 MB** | **−75%** |
+| Engine `.wasm`, C# template | 39.3 MB | **10.4 MB** | **−73%** |
+| Game `.pck` (rpg2d) | 36.5 MB | **22.9 MB** | **−38%** |
+| **rpg2d total** (wasm + pck) | 72.9 MB | **32.2 MB** | **−56%** |
+
+- Export option **`compression/precompress`** (Web preset, default off) → `.pck` and `.wasm` gzipped in place
+- Loader sees the gzip signature → inflates with the browser's `DecompressionStream`. No server config
+- File names unchanged → no double-decompress if the host also gzips
+- Loading bar counts downloaded (compressed) bytes
+- Measured: gzip -6 on existing exports, 2026-11-17. Browser run: not yet verified
+- Not yet: dlink `.side.wasm`, C# runtime files (loaded outside the Godot preloader)
 
 ## 🚀 0.1.1 — C# on the web, and it's light
 
@@ -69,8 +87,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.2`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.2`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.3`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.3`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -81,10 +99,12 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot SQLite web, GDExtension web export, GDExtension without dlink, SharedArrayBuffer COOP COEP
 - Godot web game itch.io Poki CrazyGames, Godot AdSense web, Godot Safari iOS web
 - Godot ARM64 Windows Linux, Apple Silicon Godot
+- Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
 
 | Patch | Platform | Fixes |
 |---|---|---|
+| Web pre-compression | Web | Big `.pck` / `.wasm` downloads, no server gzip |
 | [Windows IME queued key](patches/windows-ime-queued-key.md) | Windows editor + game | Korean (Hangul) typing loses caret advance after a syllable is committed |
 | [GDScript parser release](patches/gdscript-parser-release.md) | All, aimed at Web / WASM | Syntax trees of mutually dependent scripts stay alive after compile → high peak memory at boot |
 | [C# (.NET) web export](patches/dotnet-web-export.md) | Web + C# editor | Export C# projects to the web (Mono on WebAssembly). Experimental. Taken from upstream PR #106125 and ComplexRobot's rebase |
@@ -162,7 +182,22 @@ git cherry-pick 4.7.2-stable..origin/main
 
 ## 한국어 안내
 
-Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🗜️ 0.1.3 — 웹 다운로드 최대 −75%, 서버 설정 없음
+
+| 웹 다운로드 | 전 | **미리 압축** | |
+|---|---|---|---|
+| 엔진 `.wasm`, GDScript 템플릿 | 36.4 MB | **9.3 MB** | **−75%** |
+| 엔진 `.wasm`, C# 템플릿 | 39.3 MB | **10.4 MB** | **−73%** |
+| 게임 `.pck` (rpg2d) | 36.5 MB | **22.9 MB** | **−38%** |
+| **rpg2d 합계** (wasm + pck) | 72.9 MB | **32.2 MB** | **−56%** |
+
+- 웹 프리셋 옵션 **`compression/precompress`** (기본 꺼짐) → `.pck`·`.wasm` gzip 압축
+- 로더가 gzip 서명 보고 브라우저 `DecompressionStream` 으로 풂. itch.io 등 서버 설정 불필요
+- 파일명 유지 → 호스트가 또 gzip 해도 이중 해제 없음
+- 실측: 기존 내보내기에 gzip -6, 2026-11-17. 브라우저 실행: 미검증
+- 아직 안 됨: dlink `.side.wasm`, C# 런타임 파일
 
 ### 🚀 0.1.1 — C#이 웹에서 돌아가고, 가볍다
 
@@ -231,7 +266,7 @@ Godot 4.7.2 공식 소스에 패치 세 개를 더한 빌드입니다. 업스트
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.2`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.2`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.3`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.3`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
