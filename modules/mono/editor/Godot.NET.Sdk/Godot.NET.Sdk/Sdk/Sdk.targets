@@ -62,6 +62,14 @@
     <TrimmerRootAssembly Include="$(TargetName)" />
   </ItemGroup>
 
+  <!--
+    godot-enhanced: when NativeAOT trims GodotSharp (iOS GodotTrimGodotSharp, Android NativeAOT), keep the
+    members Godot reads by reflection (NativeName …). One list for every platform: GodotSharp.TrimRoots.xml.
+  -->
+  <ItemGroup Condition=" ('$(GodotTargetPlatform)' == 'ios' and '$(GodotTrimGodotSharp)' == 'true') or '$(GodotAndroidNativeAot)' == 'true' ">
+    <TrimmerRootDescriptor Include="$(MSBuildThisFileDirectory)GodotSharp.TrimRoots.xml" />
+  </ItemGroup>
+
   <!-- Platform-specific build targets. -->
   <Import Project="$(MSBuildThisFileDirectory)\Android.targets" Condition=" '$(GodotTargetPlatform)' == 'android' " />
   <Import Project="$(MSBuildThisFileDirectory)\Browser.targets" Condition=" '$(GodotTargetPlatform)' == 'web' " />

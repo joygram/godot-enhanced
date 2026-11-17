@@ -283,9 +283,16 @@ namespace GodotTools.Export
 
                     // Execute dotnet publish.
                     // Web: threaded or single-threaded runtime, following the preset's "Thread Support".
-                    string[] extraProperties = platform == OS.Platforms.Web
-                        ? [$"GodotWebThreads={((bool)GetOption("variant/thread_support") ? "true" : "false")}"]
-                        : [];
+                    var extraProperties = new List<string>();
+                    if (platform == OS.Platforms.Web)
+                        extraProperties.Add($"GodotWebThreads={((bool)GetOption("variant/thread_support") ? "true" : "false")}");
+                    // godot-enhanced: Android NativeAOT (linux-bionic) links with the NDK clang → tell the SDK where it is.
+                    if (ridOS == OS.DotNetOS.LinuxBionic)
+                    {
+                        string ndk = FindAndroidNdk()
+                            ?? throw new InvalidOperationException("Android NativeAOT (dotnet/android_use_linux_bionic) needs the Android NDK. Set ANDROID_NDK_ROOT or install an NDK under the Android SDK (Editor Settings → export/android/android_sdk_path).");
+                        extraProperties.Add($"GodotAndroidNdkPath={ndk}");
+                    }
                     if (!BuildManager.PublishProjectBlocking(buildConfig, platform,
                             runtimeIdentifier, publishOutputDir, includeDebugSymbols, extraProperties))
                     {
@@ -536,6 +543,37 @@ namespace GodotTools.Export
             if (Path.DirectorySeparatorChar == '\\')
                 return path.Replace('\\', '/');
             return path;
+        }
+
+        // godot-enhanced: NDK for Android NativeAOT. ANDROID_NDK_ROOT / ANDROID_NDK_HOME, else the newest
+        // <sdk>/ndk/<version> under the editor's Android SDK path, ANDROID_HOME or ANDROID_SDK_ROOT.
+        private static string? FindAndroidNdk()
+        {
+            foreach (string env in new[] { "ANDROID_NDK_ROOT", "ANDROID_NDK_HOME" })
+            {
+                string? dir = System.Environment.GetEnvironmentVariable(env);
+                if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+                    return dir;
+            }
+
+            var sdks = new List<string?>
+            {
+                EditorInterface.Singleton.GetEditorSettings().GetSetting("export/android/android_sdk_path").AsString(),
+                System.Environment.GetEnvironmentVariable("ANDROID_HOME"),
+                System.Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT"),
+            };
+            foreach (string? sdk in sdks)
+            {
+                if (string.IsNullOrEmpty(sdk) || !System.IO.Directory.Exists(Path.Combine(sdk, "ndk")))
+                    continue;
+                string? newest = System.IO.Directory.GetDirectories(Path.Combine(sdk, "ndk"))
+                    .Where(d => Version.TryParse(Path.GetFileName(d), out _))
+                    .OrderBy(d => Version.Parse(Path.GetFileName(d)))
+                    .LastOrDefault();
+                if (newest != null)
+                    return newest;
+            }
+            return null;
         }
 
         private string DetermineRuntimeIdentifierOS(string platform, bool useAndroidLinuxBionic)

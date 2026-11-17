@@ -54,6 +54,21 @@ if [ "$os" = linuxbsd ]; then
 		echo "  PublishTrimmed=$m: 전체 $(du -sk "$o" | cut -f1) KB, dll $(cat "$o"/*.dll | wc -c | awk '{printf "%.1f", $1/1048576}') MB, GodotSharp.dll $(size "$o/GodotSharp.dll") B, Game.dll $(size "$o/Game.dll") B"
 	done
 	[ "$(size "$work/out-true/GodotSharp.dll")" -lt "$(size "$work/out-false/GodotSharp.dll")" ] || { echo "✘ GodotSharp 안 줄어듦"; exit 1; }
+
+	# Android NativeAOT (linux-bionic): SDK 설정만으로 (내보내기 플러그인과 같은 속성) .so + 진입 심볼
+	ndk=$(ls -d "${ANDROID_NDK_ROOT:-}" "$HOME"/Android/Sdk/ndk/* 2>/dev/null | tail -1 || true)
+	if [ -n "$ndk" ]; then
+		echo "── linux-bionic-arm64 NativeAOT (NDK $(basename "$ndk"))"
+		dotnet publish -c ExportRelease -r linux-bionic-arm64 -p:GodotTargetPlatform=android -p:GodotAndroidNdkPath="$ndk" -o "$work/out-aot" -v q -nologo
+		so=$(ls "$work"/out-aot/*Game.so 2>/dev/null | head -1 || true)
+		[ -n "$so" ] || { echo "✘ Game .so 없음: $(ls "$work/out-aot" | tr '\n' ' ')"; exit 1; }
+		nm="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+		echo "  $(basename "$so") $(size "$so") B, $(file -b "$so" | cut -d, -f1-2)"
+		"$nm" -D --defined-only "$so" | grep -q godotsharp_game_main_init || { echo "✘ godotsharp_game_main_init 심볼 없음"; exit 1; }
+		echo "  진입 심볼 godotsharp_game_main_init ✔"
+	else
+		echo "(Android NDK 없음 → NativeAOT 검사 생략)"
+	fi
 else
 	echo "── ios-arm64 NativeAOT publish (Xcode: $(xcode-select -p))"
 	for m in false true; do

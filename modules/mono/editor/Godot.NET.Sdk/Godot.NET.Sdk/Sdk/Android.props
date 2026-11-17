@@ -1,2 +1,27 @@
 <Project>
+  <!--
+    godot-enhanced: Android NativeAOT. The export option dotnet/android_use_linux_bionic publishes for
+    linux-bionic-<arch>; the export plugin passes GodotAndroidNdkPath (NDK root). The NDK clang links
+    lib<Name>.so, which the engine loads instead of the Mono runtime (gd_mono try_load_native_aot_library).
+  -->
+  <PropertyGroup Condition=" $(RuntimeIdentifier.StartsWith('linux-bionic')) ">
+    <GodotAndroidNativeAot>true</GodotAndroidNativeAot>
+    <PublishAot>true</PublishAot>
+    <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <!-- linux-bionic is not a .NET-supported publish target yet; it works with the NDK toolchain below. -->
+    <DisableUnsupportedError>true</DisableUnsupportedError>
+    <NativeLib>Shared</NativeLib>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+
+    <_GodotNdkHost Condition=" $([MSBuild]::IsOsPlatform(Linux)) ">linux-x86_64</_GodotNdkHost>
+    <_GodotNdkHost Condition=" $([MSBuild]::IsOsPlatform(OSX)) ">darwin-x86_64</_GodotNdkHost>
+    <_GodotNdkHost Condition=" $([MSBuild]::IsOsPlatform(Windows)) ">windows-x86_64</_GodotNdkHost>
+    <_GodotNdkExe Condition=" $([MSBuild]::IsOsPlatform(Windows)) ">.exe</_GodotNdkExe>
+    <_GodotNdkToolchain>$(GodotAndroidNdkPath)/toolchains/llvm/prebuilt/$(_GodotNdkHost)</_GodotNdkToolchain>
+
+    <CppCompilerAndLinker Condition=" '$(GodotAndroidNdkPath)' != '' ">$(_GodotNdkToolchain)/bin/clang$(_GodotNdkExe)</CppCompilerAndLinker>
+    <SysRoot Condition=" '$(GodotAndroidNdkPath)' != '' ">$(_GodotNdkToolchain)/sysroot</SysRoot>
+    <ObjCopyName Condition=" '$(GodotAndroidNdkPath)' != '' ">$(_GodotNdkToolchain)/bin/llvm-objcopy$(_GodotNdkExe)</ObjCopyName>
+    <LinkerFlavor>lld</LinkerFlavor>
+  </PropertyGroup>
 </Project>
