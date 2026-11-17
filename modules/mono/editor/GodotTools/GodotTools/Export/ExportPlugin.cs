@@ -310,7 +310,7 @@ namespace GodotTools.Export
                         $"lib{GodotSharpDirs.ProjectAssemblyName}.{soExt}");
                     if (!File.Exists(nativeAotPath) && File.Exists(prefixedNativeAotPath))
                     {
-                        File.Move(prefixedNativeAotPath, nativeAotPath);
+                        System.IO.File.Move(prefixedNativeAotPath, nativeAotPath);
                         if (soExt == "dylib")
                         {
                             // The app links the xcframework by install name → must match the new file name.
