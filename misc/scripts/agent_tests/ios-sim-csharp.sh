@@ -89,6 +89,8 @@ mkdir -p "$work/out"
 proj=$(ls -d "$work"/out/*.xcodeproj 2>/dev/null | head -1 || true)
 [ -n "$proj" ] || { echo "✘ Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$work/export.log" | tail -40; exit 1; }
 echo "xcodeproj: $proj"
+echo "── 내보내기 로그 (끝)"; grep -v '^\s*$' "$work/export.log" | grep -v first_scan | tail -25
+echo "── xcodeproj 내용"; ls -la "$proj" "$work/out"
 
 echo "── xcodebuild (시뮬레이터)"
 scheme=$(basename "$proj" .xcodeproj)
