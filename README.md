@@ -2,6 +2,13 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🔒 0.1.10 — export templates locked to the enhanced release
+
+- Template folder: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.1.10`**
+- Editor exports only with templates from its own release; stock Godot or another release never picked up
+- Applies to: export lookup, template manager, C# export
+- Install: put release templates in `export_templates/4.7.2.stable.enhanced-<version>/`
+
 ## ✂️ 0.1.9 — C# iOS: GodotSharp trimming works, binary −63% (opt-in)
 
 | `ios-arm64` NativeAOT, sample C# project | Default | **`GodotTrimGodotSharp=true`** |
@@ -164,8 +171,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.9`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.9`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.10`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.10`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -268,6 +275,13 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🔒 0.1.10 — 내보내기 템플릿을 enhanced 릴리스에 고정
+
+- 템플릿 폴더: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.1.10`**
+- 편집기는 자기 릴리스 템플릿으로만 내보냄; 공식 Godot·다른 릴리스 템플릿 안 씀
+- 적용: 내보내기 템플릿 찾기, 템플릿 관리자, C# 내보내기
+- 설치: 릴리스 템플릿 → `export_templates/4.7.2.stable.enhanced-<버전>/`
 
 ### ✂️ 0.1.9 — C# iOS: GodotSharp 트리밍 동작, 바이너리 −63% (선택)
 
@@ -419,7 +433,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.9`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.9`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.10`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.10`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|

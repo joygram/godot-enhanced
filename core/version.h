@@ -74,6 +74,10 @@
 // Example: "3.1.4.stable.mono.double.official"
 #define GODOT_VERSION_FULL_BUILD GODOT_VERSION_FULL_CONFIG "." GODOT_VERSION_BUILD
 
+// godot-enhanced: export template folder carries the enhanced release ("4.7.2.stable.enhanced-0.1.10"),
+// so an editor only ever exports with templates from its own release — never stock or another release.
+#define GODOT_VERSION_TEMPLATES GODOT_VERSION_FULL_BUILD
+
 // Same as above, but prepended with Godot's name and a cosmetic "v" for "version".
 // Example: "Godot v3.1.4.stable.official.mono.double"
 #define GODOT_VERSION_FULL_NAME GODOT_VERSION_NAME " v" GODOT_VERSION_FULL_BUILD
