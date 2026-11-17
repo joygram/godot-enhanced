@@ -117,14 +117,15 @@ EOF
 	"$exe" --headless --path "$p" --export-debug iOS "$w/out/Game.ipa" >"$w/export.log" 2>&1 || true
 	local proj; proj=$(ls -d "$w"/out/*.xcodeproj 2>/dev/null | head -1 || true)
 	[ -n "$proj" ] || { echo "✘ [$trim] Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$w/export.log" | tail -30; return 1; }
-	echo "[$trim] dylib: $(find "$w/out/Game.xcframework" -name '*.dylib' -exec ls -l {} \; | awk '{print $5, $NF}' | tr '\n' ' ')"
+	echo "[$trim] Game.xcframework:"; find "$w/out/Game.xcframework" -type f -exec ls -l {} \; | awk '{print "  " $5, $NF}' | sed "s#$w/out/##"
+	echo "[$trim] 내보내기 C#·dotnet 로그:"; grep -iE 'dotnet|publish|\.net|assembl|C#|error' "$w/export.log" | grep -v first_scan | head -15 || true
 
 	xcodebuild -project "$proj" -scheme "$(basename "$proj" .xcodeproj)" -sdk iphonesimulator -configuration Debug -derivedDataPath "$w/dd" \
 		-destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build >"$w/xcodebuild.log" 2>&1 \
 		|| { echo "✘ [$trim] xcodebuild 실패"; grep -E 'error:' "$w/xcodebuild.log" | head -20; return 1; }
 	local app; app=$(find "$w/dd/Build/Products" -maxdepth 3 -name '*.app' | head -1 || true)
 	[ -n "$app" ] || { echo "✘ [$trim] .app 없음"; return 1; }
-	echo "[$trim] app $(du -sk "$app" | cut -f1) KB"
+	echo "[$trim] app $(du -sk "$app" | cut -f1) KB, Frameworks: $(ls "$app/Frameworks" 2>/dev/null | tr '\n' ' '), dotnet: $(find "$app" -iname '*game*' -o -iname '*.dylib' | sed "s#$app/##" | tr '\n' ' ')"
 
 	xcrun simctl install "$udid" "$app"
 	local bid; bid=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
