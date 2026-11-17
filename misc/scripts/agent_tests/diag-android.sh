@@ -19,6 +19,19 @@ cat > "$w/nuget.config" <<EOF
 EOF
 printf '<Project Sdk="Godot.NET.Sdk/%s"><PropertyGroup><TargetFramework>net11.0</TargetFramework><EnableDynamicLoading>true</EnableDynamicLoading></PropertyGroup></Project>\n' "$ver" > "$w/Game.csproj"
 printf 'using Godot;\npublic partial class Main : Node { public override void _Ready() => GD.Print("aot ok"); }\n' > "$w/Main.cs"
-echo "── android-arm64 PublishAot=true"
-(cd "$w" && dotnet publish -c ExportRelease -r android-arm64 -p:PublishAot=true -o out -nologo 2>&1 | grep -E 'error|warning NETSDK|NETSDK|ILC|clang|ndk|NDK' | head -20)
-echo "출력: $(ls "$w/out" 2>/dev/null | tr '\n' ' ')"
+sdk=$(ls -d "$HOME"/Android/Sdk 2>/dev/null | head -1)
+ndk=$(ls -d "$sdk"/ndk/* 2>/dev/null | tail -1)
+tc="$ndk/toolchains/llvm/prebuilt/linux-x86_64"
+echo "ndk: $ndk"
+try() {
+	local name=$1; shift
+	echo "── $name"
+	(cd "$w" && rm -rf out obj bin && dotnet publish -c ExportRelease -o out -nologo -p:PublishAot=true -p:GodotTargetPlatform=android "$@" 2>&1 \
+		| grep -E 'error|NETSDK|ILC|clang|ld\.|undefined' | sort -u | head -12)
+	echo "  출력: $(ls -la "$w/out" 2>/dev/null | awk '/\.so|Game/ {print $5, $NF}' | tr '\n' ' ')"
+	[ -n "$(ls "$w"/out/*.so 2>/dev/null)" ] && file "$w"/out/*.so | head -2
+}
+try "A android-arm64 + 런타임 팩" -r android-arm64 -p:PublishAotUsingRuntimePack=true
+PATH="$tc/bin:$PATH" try "B linux-bionic-arm64 + NDK clang" -r linux-bionic-arm64 -p:DisableUnsupportedError=true \
+	-p:PublishAotUsingRuntimePack=true -p:NativeLib=Shared -p:CppCompilerAndLinker=clang -p:SysRoot="$tc/sysroot" \
+	-p:LinkerFlavor=lld -p:ObjCopyName=llvm-objcopy
