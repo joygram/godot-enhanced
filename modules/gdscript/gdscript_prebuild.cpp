@@ -36,6 +36,7 @@
 #include "gdscript_utility_functions.h"
 
 #include "core/io/marshalls.h"
+#include "core/io/resource_loader.h"
 #include "core/object/class_db.h"
 #include "core/object/method_bind.h"
 #include "core/version.h"
