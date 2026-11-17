@@ -86,6 +86,58 @@ run_case() {
 	grep -qx 'IME_RESULT:にほんご' "$log"
 }
 
+# 대조군: Godot 없이 Xlib 최소 XIM 클라이언트 (같은 바깥 전환) → 첫 키가 새면 fcitx XIM 쪽 한계
+cat > "$work/xim_probe.c" <<'EOF'
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <locale.h>
+#include <stdio.h>
+int main(void) {
+	setlocale(LC_ALL, "");
+	XSetLocaleModifiers("");
+	Display *d = XOpenDisplay(NULL);
+	Window w = XCreateSimpleWindow(d, DefaultRootWindow(d), 0, 0, 400, 100, 0, 0, 0);
+	XStoreName(d, w, "xim-probe");
+	XIM im = XOpenIM(d, NULL, NULL, NULL);
+	XIC ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, w, XNFocusWindow, w, NULL);
+	long mask = 0;
+	XGetICValues(ic, XNFilterEvents, &mask, NULL);
+	XSelectInput(d, w, KeyPressMask | KeyReleaseMask | FocusChangeMask | ExposureMask | mask);
+	XMapWindow(d, w);
+	XSetICFocus(ic);
+	printf("PROBE_READY\n");
+	fflush(stdout);
+	for (;;) {
+		XEvent ev;
+		XNextEvent(d, &ev);
+		if (XFilterEvent(&ev, None)) continue;
+		if (ev.type == KeyPress) {
+			char buf[64];
+			KeySym ks;
+			Status st;
+			int n = Xutf8LookupString(ic, &ev.xkey, buf, sizeof(buf) - 1, &ks, &st);
+			if ((st == XLookupChars || st == XLookupBoth) && n > 0) {
+				buf[n] = 0;
+				printf("PROBE_COMMIT:%s\n", buf);
+				fflush(stdout);
+			}
+		}
+	}
+}
+EOF
+if gcc -o "$work/xim_probe" "$work/xim_probe.c" -lX11 2>"$work/probe-cc.log"; then
+	fcitx5-remote -s keyboard-us
+	timeout 15 "$work/xim_probe" >"$work/probe.log" 2>&1 &
+	for _ in $(seq 1 20); do grep -q PROBE_READY "$work/probe.log" && break; sleep 0.5; done
+	pw=$(xdotool search --sync --limit 1 --name xim-probe)
+	xdotool windowactivate --sync "$pw" 2>/dev/null; xdotool windowfocus --sync "$pw"; sleep 1
+	fcitx5-remote -s mozc; sleep 1
+	xdotool type --delay 120 nihongo; sleep 1; xdotool key Return; sleep 1
+	echo "[xlib-remote] 커밋: $(sed -n 's/^PROBE_COMMIT://p' "$work/probe.log" | tr -d '\n')"
+else
+	echo "[xlib-remote] 컴파일 실패: $(head -3 "$work/probe-cc.log")"
+fi
+
 fail=0
 for c in remote ctrlspace; do
 	if run_case "$c"; then echo "✔ [$c] 일본어 입력됨"; else echo "✘ [$c] 일본어 입력 안 됨"; fail=1; fi
