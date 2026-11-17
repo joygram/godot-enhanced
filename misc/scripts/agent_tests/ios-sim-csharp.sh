@@ -63,8 +63,17 @@ public partial class Main : Node
 	}
 }
 EOF
+# 아이콘 (없으면 iOS 아이콘 내보내기 실패): 1024×1024 단색 PNG
+python3 - "$p/icon.png" <<'PY'
+import struct, sys, zlib
+w = h = 1024
+raw = b"".join(b"\x00" + b"\x47\x8c\xbf" * w for _ in range(h))
+def chunk(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+open(sys.argv[1], "wb").write(png)
+PY
 printf '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://Main.cs" id="1"]\n\n[node name="Main" type="Node"]\nscript = ExtResource("1")\n' > "$p/main.tscn"
-printf 'config_version=5\n\n[application]\n\nconfig/name="Game"\nrun/main_scene="res://main.tscn"\n\n[dotnet]\n\nproject/assembly_name="Game"\n\n[rendering]\n\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"\ntextures/vram_compression/import_etc2_astc=true\n' > "$p/project.godot"
+printf 'config_version=5\n\n[application]\n\nconfig/name="Game"\nrun/main_scene="res://main.tscn"\nconfig/icon="res://icon.png"\n\n[dotnet]\n\nproject/assembly_name="Game"\n\n[rendering]\n\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"\ntextures/vram_compression/import_etc2_astc=true\n' > "$p/project.godot"
 cat > "$p/export_presets.cfg" <<EOF
 [preset.0]
 name="iOS"
