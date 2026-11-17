@@ -292,6 +292,8 @@ namespace GodotTools.Export
                         string ndk = FindAndroidNdk()
                             ?? throw new InvalidOperationException("Android NativeAOT (dotnet/android_use_linux_bionic) needs the Android NDK. Set ANDROID_NDK_ROOT or install an NDK under the Android SDK (Editor Settings → export/android/android_sdk_path).");
                         extraProperties.Add($"GodotAndroidNdkPath={ndk}");
+                        // Global, not only in Android.props: restore picks the runtime pack before the SDK props see it.
+                        extraProperties.Add("PublishAot=true");
                     }
                     if (!BuildManager.PublishProjectBlocking(buildConfig, platform,
                             runtimeIdentifier, publishOutputDir, includeDebugSymbols, extraProperties))

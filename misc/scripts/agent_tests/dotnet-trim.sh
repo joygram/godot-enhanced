@@ -61,7 +61,7 @@ if [ "$os" = linuxbsd ]; then
 		echo "── linux-bionic-arm64 NativeAOT (NDK $(basename "$ndk"))"
 		rm -rf obj bin
 		echo "  평가: $(dotnet msbuild -p:RuntimeIdentifier=linux-bionic-arm64 -p:GodotTargetPlatform=android -p:Configuration=ExportRelease -getProperty:PublishAot -getProperty:UseMonoRuntime -getProperty:GodotAndroidNativeAot -getProperty:CppCompilerAndLinker 2>&1 | tr -d '\n ')"
-		dotnet publish -c ExportRelease -r linux-bionic-arm64 -p:GodotTargetPlatform=android -p:GodotAndroidNdkPath="$ndk" -o "$work/out-aot" -v q -nologo
+		dotnet publish -c ExportRelease -r linux-bionic-arm64 -p:GodotTargetPlatform=android -p:GodotAndroidNdkPath="$ndk" -p:PublishAot=true -o "$work/out-aot" -v q -nologo
 		so=$(ls "$work"/out-aot/*Game.so 2>/dev/null | head -1 || true)
 		[ -n "$so" ] || { echo "✘ Game .so 없음: $(ls "$work/out-aot" | tr '\n' ' ')"; exit 1; }
 		nm="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
