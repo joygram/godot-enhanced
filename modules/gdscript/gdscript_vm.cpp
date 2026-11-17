@@ -798,7 +798,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 	{
 		// One opcode body per instantiation; the generated GD_AOT_RUN calls it with constant ip.
 		// C++17 generic lambda: the opcode is a type (std::integral_constant), so unchosen bodies are discarded.
-		auto aot_op = [&](auto p_op) __attribute__((always_inline)) -> int {
+		auto aot_op = [&](auto p_op) GD_AOT_INLINE -> int {
 			constexpr int GD_AOT_OP = decltype(p_op)::value;
 			auto *const _code_ptr = gd_aot_dependent<decltype(p_op)>(gd_aot_code);
 			if constexpr (GD_AOT_OP < 0) {

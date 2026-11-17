@@ -141,6 +141,10 @@ protected:
 		if (preset.is_valid()) {
 			script_mode = preset->get_script_export_mode();
 		}
+		if (!aot_dir.is_empty()) {
+			// AOT needs the prebuilt bytecode → export as Prebuilt whatever the preset says.
+			script_mode = EditorExportPreset::MODE_SCRIPT_PREBUILT;
+		}
 	}
 
 	virtual void _export_file(const String &p_path, const String &p_type, const HashSet<String> &p_features) override {

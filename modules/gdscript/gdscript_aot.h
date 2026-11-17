@@ -12,6 +12,13 @@
 
 class GDScript;
 
+// Opcode lambda is always inlined so clang/MSVC fold the constant ip and operands.
+#if defined(__GNUC__) || defined(__clang__)
+#define GD_AOT_INLINE __attribute__((always_inline))
+#else
+#define GD_AOT_INLINE
+#endif
+
 // AOT opcode lambda: makes the bytecode pointer's type depend on the opcode tag, so a discarded opcode body
 // (e.g. OPCODE_OPERATOR writing its cache into the code) is not checked against a const code array.
 template <typename T, typename P>
