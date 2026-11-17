@@ -112,10 +112,11 @@ createServer(async (req, res) => {
 		log.write(`[agent] job ${job}: ${sha.slice(0, 10)} scons ${args || "(없음)"} test=${tests.join(",") || "-"} release=${release || "-"}\n`);
 		// 원격 이력은 origin 에서, 푸시 전 커밋만 묶음(bundle)으로 받음
 		const fetchBundle = statSync(bundle).size > 0 ? `git fetch -q "${bundle}" HEAD:refs/heads/agent-build -f && ` : "";
-		// 웹 빌드: ~/emsdk 를 받은 커밋의 misc/scripts/emscripten-version 으로 설치·활성화
+		// 웹 빌드: ~/emsdk 를 받은 커밋의 버전 파일로 설치·활성화 (C# = emscripten-version-dotnet, 그 외 emscripten-version)
 		// (macOS 기본 python 3.9 → brew python@3.12 있으면 EMSDK_PYTHON 지정)
+		const emverFile = /module_mono_enabled=yes/.test(args) ? "misc/scripts/emscripten-version-dotnet" : "misc/scripts/emscripten-version";
 		const emsdk = /platform=web/.test(args) && existsSync(join(homedir(), "emsdk", "emsdk_env.sh"))
-			? `{ command -v brew >/dev/null && [ -x "$(brew --prefix python@3.12 2>/dev/null)/bin/python3.12" ] && export EMSDK_PYTHON="$(brew --prefix python@3.12)/bin/python3.12"; true; } && emver="$(tr -d '[:space:]' < misc/scripts/emscripten-version)" && ~/emsdk/emsdk install "$emver" >/dev/null && ~/emsdk/emsdk activate "$emver" >/dev/null && source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && `
+			? `{ command -v brew >/dev/null && [ -x "$(brew --prefix python@3.12 2>/dev/null)/bin/python3.12" ] && export EMSDK_PYTHON="$(brew --prefix python@3.12)/bin/python3.12"; true; } && emver="$(tr -d '[:space:]' < ${emverFile})" &&~/emsdk/emsdk install "$emver" >/dev/null && ~/emsdk/emsdk activate "$emver" >/dev/null && source ~/emsdk/emsdk_env.sh >/dev/null 2>&1 && `
 			: "";
 		// 단계 기록 (대시보드용): meta.json = { 작업 정보, steps: [{ name, status, start, end }] }
 		const meta = { job, sha, args, tests, release, status: "running", started: Date.now(), ended: null,

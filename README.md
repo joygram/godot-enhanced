@@ -17,7 +17,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Error: `setting 'sig'`, then GL `LinkError`
 - Cause: 6.0.2 bound GL aliases to wasm exports before instantiation
 - GDExtension web builds: rebuild with 7.0.0 (6.0.2 side modules → `resolved is not a function`)
-- C# `.mono` web templates: same version file (7.0.0)
+- C# `.mono` web templates: 6.0.2 (`misc/scripts/emscripten-version-dotnet`), fixed by the .NET 11 runtime pack
 
 ## ⚡ 0.2.0 — GDScript prebuild, export templates locked to the release
 
@@ -265,7 +265,7 @@ Apply all three (as above), or only the ones you need — each patch also applie
 - Assets: 4 zips, threads / nothreads × static / dlink (`godot.web.template_release.wasm32[.nothreads][.dlink].zip`)
 - dlink = GDExtension support; threads = server must send COOP / COEP
 - Use: Web export preset → Custom Template → Release → the zip.
-- Emscripten 7.0.0 (`misc/scripts/emscripten-version`), GDScript and C# alike.
+- Emscripten 7.0.0 (`misc/scripts/emscripten-version`); C# `.mono` 6.0.2 (.NET 11 runtime pack).
 - With dlink, your GDExtension web builds must use the same version.
 - These are the GDScript templates. C# web projects need the separate `.mono` templates below.
 - GDExtension without dlink: build the template with `static_gdextensions=<name>` (list: [misc/static_gdextensions.json](misc/static_gdextensions.json)).
@@ -322,7 +322,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 원인: 6.0.2 가 GL 별칭을 인스턴스 전에 wasm export 로 묶음
 - GDExtension 웹 빌드: 7.0.0 으로 재빌드 필요 (6.0.2 모듈 → `resolved is not a function`)
 - 서버: 멀티스레드 = COOP·COEP 헤더 필요 (SharedArrayBuffer)
-- C# `.mono` 웹 템플릿: 같은 버전 파일 (7.0.0)
+- C# `.mono` 웹 템플릿: 6.0.2 (`misc/scripts/emscripten-version-dotnet`), .NET 11 런타임 팩 고정
 
 ### ⚡ 0.2.0 — GDScript 사전 빌드, 내보내기 템플릿을 릴리스에 고정
 
@@ -532,7 +532,7 @@ git apply patches/godot-4.7.2-windows-ime-queued-key.patch
 - zip 4종: 스레드·스레드 없음 × 정적·dlink (`godot.web.template_release.wasm32[.nothreads][.dlink].zip`)
 - dlink = GDExtension 사용, 스레드 = 서버 COOP·COEP 헤더 필요
 - 웹 내보내기 프리셋의 Custom Template → Release에 zip 파일을 지정하면 됩니다.
-- Emscripten 7.0.0 (`misc/scripts/emscripten-version`), GDScript·C# 공통. dlink 면 GDExtension 웹 빌드도 같은 버전
+- Emscripten 7.0.0 (`misc/scripts/emscripten-version`), C# `.mono` 는 6.0.2. dlink 면 GDExtension 웹 빌드도 같은 버전
 - 위 템플릿은 GDScript용입니다. C# 웹 프로젝트는 아래의 별도 `.mono` 템플릿이 필요합니다.
 - dlink 없이 GDExtension: 템플릿을 `static_gdextensions=<이름>`으로 빌드 (목록: [misc/static_gdextensions.json](misc/static_gdextensions.json))
 

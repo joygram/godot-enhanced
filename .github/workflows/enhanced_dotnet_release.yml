@@ -157,10 +157,11 @@ jobs:
           dotnet --version
           dotnet workload install wasm-tools
           dotnet workload list
-      # Emscripten = misc/scripts/emscripten-version (GDScript web templates와 같은 버전)
+      # Emscripten = misc/scripts/emscripten-version-dotnet: .NET 11 Mono 런타임 팩을 미리 컴파일한 버전.
+      # 7.0.0 은 libunwind 에 _Unwind_CallPersonality 가 없어 팩(libmono-wasm-eh-wasm.a) 링크 실패.
       - name: Emscripten version
         id: emver
-        run: echo "version=$(tr -d '[:space:]' < misc/scripts/emscripten-version)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(tr -d '[:space:]' < misc/scripts/emscripten-version-dotnet)" >> "$GITHUB_OUTPUT"
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: ${{ steps.emver.outputs.version }}
