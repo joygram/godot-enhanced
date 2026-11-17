@@ -7,5 +7,7 @@ for base in "$d" "$sdkroot/packs" "$sdkroot/sdk"; do
 	echo "── $base"
 	grep -rln "NativeBinaryPrefix" "$base" --include='*.targets' --include='*.props' 2>/dev/null | head -10
 done
+echo "── UseNativeLibPrefix 를 쓰는 곳"
+grep -rn "UseNativeLibPrefix" "$d" "$sdkroot/packs" "$sdkroot/sdk" --include='*.targets' --include='*.props' 2>/dev/null | head -20
 echo "── 접두 규칙 줄"
 grep -rn "<NativeBinaryPrefix" "$d" "$sdkroot/packs" "$sdkroot/sdk" --include='*.targets' --include='*.props' 2>/dev/null | head -20
