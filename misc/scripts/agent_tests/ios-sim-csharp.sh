@@ -119,6 +119,7 @@ EOF
 	"$exe" --headless --path "$p" --export-debug iOS "$w/out/Game.ipa" >"$w/export.log" 2>&1 || true
 	local proj; proj=$(ls -d "$w"/out/*.xcodeproj 2>/dev/null | head -1 || true)
 	[ -n "$proj" ] || { echo "✘ [$trim] Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$w/export.log" | tail -30; return 1; }
+	echo "[$trim] publish 폴더:"; for d in "$p"/.godot/mono/temp/bin/godot-publish-dotnet/*/; do echo "  $(basename "$d"): $(ls "$d" | tr '\n' ' ' | cut -c1-400)"; done
 	echo "[$trim] Game.xcframework:"; find "$w/out/Game.xcframework" -type f -exec ls -l {} \; | awk '{print "  " $5, $NF}' | sed "s#$w/out/##"
 	echo "[$trim] 내보내기 C#·dotnet 로그:"; grep -iE 'dotnet|publish|\.net|assembl|C#|error' "$w/export.log" | grep -v first_scan | head -15 || true
 
