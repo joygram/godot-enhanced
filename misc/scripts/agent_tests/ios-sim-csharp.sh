@@ -64,7 +64,7 @@ public partial class Main : Node
 }
 EOF
 printf '[gd_scene load_steps=2 format=3]\n\n[ext_resource type="Script" path="res://Main.cs" id="1"]\n\n[node name="Main" type="Node"]\nscript = ExtResource("1")\n' > "$p/main.tscn"
-printf 'config_version=5\n\n[application]\n\nconfig/name="Game"\nrun/main_scene="res://main.tscn"\n\n[dotnet]\n\nproject/assembly_name="Game"\n\n[rendering]\n\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"\n' > "$p/project.godot"
+printf 'config_version=5\n\n[application]\n\nconfig/name="Game"\nrun/main_scene="res://main.tscn"\n\n[dotnet]\n\nproject/assembly_name="Game"\n\n[rendering]\n\nrenderer/rendering_method="gl_compatibility"\nrenderer/rendering_method.mobile="gl_compatibility"\ntextures/vram_compression/import_etc2_astc=true\n' > "$p/project.godot"
 cat > "$p/export_presets.cfg" <<EOF
 [preset.0]
 name="iOS"
