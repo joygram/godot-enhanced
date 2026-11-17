@@ -1,0 +1,12 @@
+<!--
+  godot-enhanced: members of GodotSharp that Godot reads by reflection, kept when GodotSharp is trimmed
+  (GodotTrimGodotSharp=true). Only these members are kept; the rest of each type is still trimmed.
+  - NativeName: GodotObject.InternalGetClassNativeBaseName → GetField("NativeName") → script native class
+-->
+<linker>
+  <assembly fullname="GodotSharp">
+    <type fullname="Godot.*" preserve="nothing" required="false">
+      <field name="NativeName" required="false" />
+    </type>
+  </assembly>
+</linker>

@@ -2,6 +2,8 @@
   <ItemGroup>
     <!-- godot-enhanced: GodotTrimGodotSharp=true lets NativeAOT trim GodotSharp too (as on web/Android). -->
     <TrimmerRootAssembly Include="GodotSharp" Condition="'$(EnableGodotDotNetPreview)' != 'true' and '$(DisableImplicitGodotSharpReferences)' != 'true' and '$(GodotTrimGodotSharp)' != 'true'" />
+    <!-- Keep what Godot reads from GodotSharp by reflection (NativeName …) when it is trimmed. -->
+    <TrimmerRootDescriptor Include="$(MSBuildThisFileDirectory)GodotSharp.TrimRoots.xml" Condition="'$(GodotTrimGodotSharp)' == 'true'" />
     <TrimmerRootAssembly Include="Godot.Bindings" Condition="'$(EnableGodotDotNetPreview)' == 'true'" />
     <TrimmerRootAssembly Include="$(TargetName)" />
     <LinkerArg Include="-install_name '@rpath/$(TargetName)$(NativeBinaryExt)'" />

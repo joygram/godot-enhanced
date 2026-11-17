@@ -41,6 +41,7 @@
     <None Include="Sdk\Browser.targets" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\iOS.props" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\iOS.targets" Pack="true" PackagePath="Sdk" />
+    <None Include="Sdk\GodotSharp.TrimRoots.xml" Pack="true" PackagePath="Sdk" />
   </ItemGroup>
 
 </Project>
