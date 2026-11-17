@@ -18,9 +18,10 @@ proj="$JOB_DIR/web-project"
 make_gdscript_project "$proj" 200
 "$editor" --headless --path "$proj" --import >/dev/null 2>&1 || true
 
-# 내보내기 + 브라우저 측정. $1 = 템플릿, $2 = extensions_support(dlink), $3 = 결과 이름
+# 내보내기 + 브라우저 측정. $1 = 템플릿, $2 = extensions_support(dlink), $3 = 결과 이름,
+# $4 = thread_support (기본 false), $5 = script_export_mode (기본 2 압축 토큰, 3 사전 빌드)
 run_variant() {
-	local tpl=$1 ext=$2 tag=$3 o="$JOB_DIR/web-out-$3"
+	local tpl=$1 ext=$2 tag=$3 threads=${4:-false} mode=${5:-2} o="$JOB_DIR/web-out-$3"
 	rm -rf "$o"; mkdir -p "$o"
 	cat > "$proj/export_presets.cfg" <<EOF
 [preset.0]
@@ -31,11 +32,12 @@ export_filter="all_resources"
 include_filter=""
 exclude_filter=""
 export_path=""
+script_export_mode=$mode
 [preset.0.options]
 custom_template/debug=""
 custom_template/release="$root/$tpl"
 variant/extensions_support=$ext
-variant/thread_support=false
+variant/thread_support=$threads
 vram_texture_compression/for_desktop=true
 html/export_icon=false
 compression/precompress=true
@@ -54,6 +56,11 @@ EOF
 }
 
 run_variant "$template" false static
+# 사전 빌드 (script_export_mode=3): 같은 템플릿, 부팅·힙 비교
+run_variant "$template" false static-prebuilt false 3
 # dlink 템플릿이 있으면 (platform=web dlink_enabled=yes) side module 경로도 검사
 dlink=$(ls -t bin/godot.web.template_release.wasm32.nothreads.dlink.zip 2>/dev/null | head -1 || true)
 if [ -n "$dlink" ]; then run_variant "$dlink" true dlink; else echo "(dlink 템플릿 없음 → dlink 검사 생략)"; fi
+# 멀티스레드 + dlink + 사전 빌드 (rpg2d 배포 조합) — threads=yes dlink_enabled=yes 템플릿이 있으면
+tdlink=$(ls -t bin/godot.web.template_release.wasm32.dlink.zip 2>/dev/null | head -1 || true)
+if [ -n "$tdlink" ]; then run_variant "$tdlink" true threads-dlink-prebuilt true 3; else echo "(threads dlink 템플릿 없음 → 생략)"; fi
