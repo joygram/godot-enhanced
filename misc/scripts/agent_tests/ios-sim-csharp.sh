@@ -71,18 +71,61 @@ EOF
   <GodotTrimGodotSharp>$trim</GodotTrimGodotSharp></PropertyGroup>
 </Project>
 EOF
+	# 표본: 리플렉션·동적 경로 묶음. 모두 통과해야 `trim ok 3`, 아니면 `trim fail <항목>`
 	cat > "$p/Main.cs" <<'EOF'
+using System.Collections.Generic;
 using Godot;
 public partial class Main : Node
 {
+	[Signal] public delegate void PingEventHandler(int value);
 	[Export] public int[] Values = { 1, 2, 3 };
-	public override void _Ready()
+	[Export] public int Speed { get; set; } = 1;
+	[Export] public string Label = "a";
+	private int _ping, _pingCallable;
+	public int Add(int a, int b) => a + b;
+	private void OnPingCallable(int v) => _pingCallable = v;
+
+	public override async void _Ready()
 	{
-		GD.Print("trim ok ", Values.Length);
-		GD.PrintErr("trim ok ", Values.Length);
-		System.Console.WriteLine("trim ok " + Values.Length);
+		var fails = new List<string>();
+		void Check(string name, bool ok) { GD.Print("CHK ", name, ok ? " ok" : " FAIL"); if (!ok) fails.Add(name); }
+
+		Check("export_array", Values.Length == 3);
+		Ping += v => _ping = v;
+		EmitSignal(SignalName.Ping, 5);
+		Check("signal_event", _ping == 5);
+		Connect(SignalName.Ping, Callable.From<int>(OnPingCallable));
+		EmitSignal(SignalName.Ping, 6);
+		Check("signal_callable", _pingCallable == 6);
+		Check("call_by_name", Call("Add", 2, 3).AsInt32() == 5);
+		Check("callable_by_name", new Callable(this, MethodName.Add).Call(4, 5).AsInt32() == 9);
+		Set("Speed", 7);
+		Check("set_get_property", Get("Speed").AsInt32() == 7 && Speed == 7);
+		Check("get_field", Get("Label").AsString() == "a");
+		var arr = new Godot.Collections.Array<int> { 1, 2 };
+		var dict = new Godot.Collections.Dictionary<string, int> { ["k"] = 3 };
+		Variant va = arr, vd = dict;
+		Check("typed_collections", va.AsGodotArray<int>().Count == 2 && vd.AsGodotDictionary<string, int>()["k"] == 3);
+		var sub = new Sub();
+		AddChild(sub);
+		Check("child_script", sub.Ready);
+		Check("has_method", HasMethod(MethodName.Add) && HasSignal(SignalName.Ping));
+		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+		Check("await_to_signal", true);
+
+		string result = fails.Count == 0 ? "trim ok " + Values.Length : "trim fail " + string.Join(",", fails);
+		GD.Print(result);
+		System.Console.WriteLine(result);
 		GetTree().Quit();
 	}
+}
+EOF
+	cat > "$p/Sub.cs" <<'EOF'
+using Godot;
+public partial class Sub : Node
+{
+	public bool Ready;
+	public override void _Ready() => Ready = true;
 }
 EOF
 	# 아이콘 (없으면 iOS 아이콘 내보내기 실패): 1024×1024 단색 PNG
@@ -149,7 +192,7 @@ EOF
 	fi
 	cat "$w/run.log" "$w/syslog.log" >"$w/all.log"
 	echo "[$trim] Godot·.NET 관련 로그:"
-	grep -iE 'trim ok|godot|\.net|mono|dotnet|assembl|script|error|exception|crash|abort|fault|signal' "$w/all.log" | grep -viE 'coreaudio|gamecontroller|UIKit|FrontBoard|networkd' | head -30 || true
+	grep -iE 'CHK |trim fail|trim ok|godot|\.net|mono|dotnet|assembl|script|error|exception|crash|abort|fault|signal' "$w/all.log" | grep -viE 'coreaudio|gamecontroller|UIKit|FrontBoard|networkd' | head -30 || true
 	grep -q 'trim ok 3' "$w/all.log"
 }
 
