@@ -60,10 +60,16 @@ variant/extensions_support=false
 variant/thread_support=false
 vram_texture_compression/for_desktop=true
 html/export_icon=false
+compression/precompress=true
 EOF
 
 "$editor" --headless --path "$proj" --import >/dev/null 2>&1 || true
 "$editor" --headless --path "$proj" --export-release Web "$out/index.html" 2>&1 | grep -E '^(ERROR|WARNING: .*export)' || true
 [ -f "$out/index.wasm" ] || { echo "✘ 내보내기 실패"; exit 1; }
+# compression/precompress: .pck·.wasm 이 gzip 서명(1f8b)으로 시작해야 함 → 브라우저 부팅 = 로더 해제 검증
+for f in index.wasm index.pck; do
+	[ "$(head -c2 "$out/$f" | od -An -tx1 | tr -d ' \n')" = "1f8b" ] || { echo "✘ $f 미압축"; exit 1; }
+done
+echo "precompress: wasm $(stat -c%s "$out/index.wasm") B, pck $(stat -c%s "$out/index.pck") B"
 node misc/scripts/web_memory.mjs "$out" "${WEB_MEMORY_SECONDS:-30}" "$JOB_DIR/web-memory.json"
 echo "✔ web-memory 통과"
