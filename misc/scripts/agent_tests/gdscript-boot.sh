@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # GDScript 부팅 벤치: 같은 시험 프로젝트(서로 참조하는 GDScript N 개)를 script_export_mode 별로 .pck 내보내
 # 데스크톱 headless 로 실행 → 부팅 ms·정적 메모리 최고치 (각 RUNS 회, 중앙값)
-# 모드: 0 텍스트 / 1 바이너리 토큰 / 2 압축 바이너리 토큰 (+ 사전 빌드가 들어오면 그 모드)
+# 모드: 0 텍스트 / 1 바이너리 토큰 / 2 압축 바이너리 토큰 / 3 사전 빌드 (Prebuilt, godot-enhanced)
 # 필요: bin/godot.linuxbsd.editor.x86_64 (target=editor)
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
@@ -17,7 +17,7 @@ proj="$work/proj"; make_gdscript_project "$proj" "$N"
 median() { sort -n | awk '{a[NR]=$1} END {print a[int((NR+1)/2)]}'; }
 echo "에디터: $editor, 클래스 $N, 반복 $RUNS"
 printf '%-6s %10s %10s %10s %12s\n' mode boot_ms load_ms wall_ms static_MB
-for mode in ${GDSCRIPT_BENCH_MODES:-0 1 2}; do
+for mode in ${GDSCRIPT_BENCH_MODES:-0 1 2 3}; do
 	cat > "$proj/export_presets.cfg" <<EOF
 [preset.0]
 name="Linux"

@@ -34,6 +34,7 @@
 #include "gdscript_cache.h"
 #include "gdscript_compiler.h"
 #include "gdscript_parser.h"
+#include "gdscript_prebuild.h"
 #include "gdscript_rpc_callable.h"
 #include "gdscript_tokenizer_buffer.h"
 #include "gdscript_warning.h"
@@ -71,7 +72,7 @@
 // are subtracted from the stage that triggered them.
 namespace GDScriptTimings {
 static bool enabled = false;
-static uint64_t parse_us = 0, analyze_us = 0, compile_us = 0, reload_nested_us = 0;
+static uint64_t parse_us = 0, analyze_us = 0, compile_us = 0, prebuild_us = 0, reload_nested_us = 0;
 static uint32_t scripts = 0;
 
 struct Stage {
@@ -101,8 +102,8 @@ struct Reload {
 
 static void print_summary() {
 	if (enabled) {
-		print_line(vformat("gdscript_timings scripts=%d parse_ms=%.1f analyze_ms=%.1f compile_ms=%.1f",
-				scripts, parse_us / 1000.0, analyze_us / 1000.0, compile_us / 1000.0));
+		print_line(vformat("gdscript_timings scripts=%d parse_ms=%.1f analyze_ms=%.1f compile_ms=%.1f prebuild_ms=%.1f",
+				scripts, parse_us / 1000.0, analyze_us / 1000.0, compile_us / 1000.0, prebuild_us / 1000.0));
 	}
 }
 } // namespace GDScriptTimings
@@ -861,7 +862,14 @@ Error GDScript::reload(bool p_keep_state) {
 	valid = false;
 	Error err;
 	GDScriptTimings::Reload timing_reload;
-	{
+	// godot-enhanced: prebuilt export → compiled class tree as is, no parse / analyze / compile.
+	// Unusable data (other build, missing dependency) falls back to the tokens below.
+	bool prebuilt_applied = false;
+	if (!prebuilt.is_empty()) {
+		GDScriptTimings::Stage timing(&GDScriptTimings::prebuild_us);
+		prebuilt_applied = GDScriptPrebuild::apply(this, prebuilt) == OK;
+	}
+	if (!prebuilt_applied) {
 	GDScriptParser parser;
 	{
 		GDScriptTimings::Stage timing(&GDScriptTimings::parse_us);
@@ -1236,7 +1244,11 @@ Error GDScript::load_source_code(const String &p_path) {
 }
 
 void GDScript::set_binary_tokens_source(const Vector<uint8_t> &p_binary_tokens) {
-	binary_tokens = p_binary_tokens;
+	// godot-enhanced: a prebuilt .gdc carries tokens + compiled data; plain .gdc is tokens only.
+	if (!GDScriptPrebuild::unpack(p_binary_tokens, binary_tokens, prebuilt)) {
+		binary_tokens = p_binary_tokens;
+		prebuilt.clear();
+	}
 }
 
 const Vector<uint8_t> &GDScript::get_binary_tokens_source() const {

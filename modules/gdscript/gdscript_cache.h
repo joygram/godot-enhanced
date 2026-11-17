@@ -95,6 +95,7 @@ class GDScriptCache {
 	friend class GDScript;
 	friend class GDScriptParserRef;
 	friend class GDScriptInstance;
+	friend class GDScriptPrebuild; // godot-enhanced: static script registration of prebuilt scripts.
 	friend class GDScriptTests::TestGDScriptCacheAccessor;
 
 	static GDScriptCache *singleton;

@@ -99,6 +99,8 @@ class GDScriptByteCodeGenerator : public GDScriptCodeGenerator {
 	int max_locals = 0;
 	int current_line = 0;
 	int instr_args_max = 0;
+	// godot-enhanced (prebuild): code offsets holding a GDScriptLanguage global index (runtime-dependent).
+	Vector<int> global_index_offsets;
 
 #ifdef DEBUG_ENABLED
 	List<int> temp_stack;

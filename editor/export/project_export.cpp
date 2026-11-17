@@ -1933,6 +1933,7 @@ ProjectExportDialog::ProjectExportDialog() {
 	script_mode->add_item(TTRC("Text (easier debugging)"), (int)EditorExportPreset::MODE_SCRIPT_TEXT);
 	script_mode->add_item(TTRC("Binary tokens (faster loading)"), (int)EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS);
 	script_mode->add_item(TTRC("Compressed binary tokens (smaller files)"), (int)EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED);
+	script_mode->add_item(TTRC("Prebuilt (fastest loading, compiled at export)"), (int)EditorExportPreset::MODE_SCRIPT_PREBUILT);
 	script_mode->connect(SceneStringName(item_selected), callable_mp(this, &ProjectExportDialog::_script_export_mode_changed));
 
 	sections->add_child(script_vb);

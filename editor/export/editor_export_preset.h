@@ -58,6 +58,7 @@ public:
 		MODE_SCRIPT_TEXT,
 		MODE_SCRIPT_BINARY_TOKENS,
 		MODE_SCRIPT_BINARY_TOKENS_COMPRESSED,
+		MODE_SCRIPT_PREBUILT, // godot-enhanced: compiled GDScript stored at export (no parse / compile at load).
 	};
 
 private:

@@ -88,6 +88,7 @@ class GDScript : public Script {
 	friend class GDScriptLambdaSelfCallable;
 	friend class GDScriptLanguage;
 	friend struct GDScriptUtilityFunctionsDefinitions;
+	friend class GDScriptPrebuild; // godot-enhanced: save / apply compiled classes.
 
 	Ref<GDScriptNativeClass> native;
 	Ref<GDScript> base;
@@ -178,6 +179,7 @@ private:
 	//exported members
 	String source;
 	Vector<uint8_t> binary_tokens;
+	Vector<uint8_t> prebuilt; // godot-enhanced: compiled class tree from a prebuilt .gdc (GDScriptPrebuild).
 	String path;
 	bool path_valid = false; // False if using default path.
 	StringName local_name; // Inner class identifier or `class_name`.

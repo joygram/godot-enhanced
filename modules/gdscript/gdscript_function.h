@@ -362,6 +362,10 @@ private:
 	mutable Variant nil;
 	TightLocalVector<Pair<int, Variant::Type>> temporary_slots;
 	List<StackDebug> stack_debug;
+	// godot-enhanced (prebuild): code offsets holding a GDScriptLanguage global index. Saved by name,
+	// re-resolved on load (global indices depend on registration order).
+	Vector<int> global_index_offsets;
+	friend class GDScriptPrebuild;
 
 	Vector<int> code;
 	Vector<int> default_arguments;

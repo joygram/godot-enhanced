@@ -33,6 +33,7 @@
 #include "gdscript.h"
 #include "gdscript_cache.h"
 #include "gdscript_parser.h"
+#include "gdscript_prebuild.h"
 #include "gdscript_resource_format.h"
 #include "gdscript_tokenizer_buffer.h"
 #include "gdscript_utility_functions.h"
@@ -85,10 +86,20 @@ class EditorExportGDScript : public EditorExportPlugin {
 
 	static constexpr EditorExportPreset::ScriptExportMode DEFAULT_SCRIPT_MODE = EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED;
 	EditorExportPreset::ScriptExportMode script_mode = DEFAULT_SCRIPT_MODE;
+	int prebuilt_count = 0;
+	int tokens_only_count = 0;
 
 protected:
+	virtual void _export_end() override {
+		if (script_mode == EditorExportPreset::MODE_SCRIPT_PREBUILT) {
+			print_line(vformat("GDScript prebuild: %d prebuilt, %d as tokens.", prebuilt_count, tokens_only_count));
+		}
+	}
+
 	virtual void _export_begin(const HashSet<String> &p_features, bool p_debug, const String &p_path, int p_flags) override {
 		script_mode = DEFAULT_SCRIPT_MODE;
+		prebuilt_count = 0;
+		tokens_only_count = 0;
 
 		const Ref<EditorExportPreset> &preset = get_export_preset();
 		if (preset.is_valid()) {
@@ -107,10 +118,25 @@ protected:
 		}
 
 		String source = String::utf8(reinterpret_cast<const char *>(file.ptr()), file.size());
-		GDScriptTokenizerBuffer::CompressMode compress_mode = script_mode == EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED ? GDScriptTokenizerBuffer::COMPRESS_ZSTD : GDScriptTokenizerBuffer::COMPRESS_NONE;
+		GDScriptTokenizerBuffer::CompressMode compress_mode = script_mode == EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED || script_mode == EditorExportPreset::MODE_SCRIPT_PREBUILT ? GDScriptTokenizerBuffer::COMPRESS_ZSTD : GDScriptTokenizerBuffer::COMPRESS_NONE;
 		file = GDScriptTokenizerBuffer::parse_code_string(source, compress_mode);
 		if (file.is_empty()) {
 			return;
+		}
+
+		// godot-enhanced: Prebuilt → tokens + the compiled class tree (GDScriptPrebuild). A script that
+		// cannot be stored keeps plain tokens and compiles at load as usual.
+		if (script_mode == EditorExportPreset::MODE_SCRIPT_PREBUILT) {
+			Ref<GDScript> script = ResourceLoader::load(p_path, "GDScript");
+			String error;
+			Vector<uint8_t> prebuilt = script.is_valid() ? GDScriptPrebuild::save(script.ptr(), error) : Vector<uint8_t>();
+			if (!prebuilt.is_empty()) {
+				file = GDScriptPrebuild::pack(file, prebuilt);
+				prebuilt_count++;
+			} else {
+				print_verbose(vformat("GDScript prebuild: %s kept as tokens (%s).", p_path, script.is_valid() ? error : String("not loadable")));
+				tokens_only_count++;
+			}
 		}
 
 		add_file(p_path.get_basename() + ".gdc", file, true);

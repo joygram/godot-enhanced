@@ -34,6 +34,7 @@
 #include "gdscript_analyzer.h"
 #include "gdscript_compiler.h"
 #include "gdscript_parser.h"
+#include "gdscript_prebuild.h"
 
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -82,7 +83,8 @@ Error GDScriptParserRef::raise_status(Status p_new_status) {
 				status = PARSED;
 				String remapped_path = ResourceLoader::path_remap(path);
 				if (remapped_path.has_extension("gdc")) {
-					Vector<uint8_t> tokens = GDScriptCache::get_binary_tokens(remapped_path);
+					// godot-enhanced: a prebuilt .gdc is a container; the parser only needs its tokens.
+					Vector<uint8_t> tokens = GDScriptPrebuild::tokens_of(GDScriptCache::get_binary_tokens(remapped_path));
 					source_hash = hash_djb2_buffer(tokens.ptr(), tokens.size());
 					result = get_parser()->parse_binary(tokens, path);
 				} else {
