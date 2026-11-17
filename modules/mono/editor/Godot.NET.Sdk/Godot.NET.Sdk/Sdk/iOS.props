@@ -4,5 +4,8 @@
     <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
     <UseNativeAOTRuntime>true</UseNativeAOTRuntime>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- godot-enhanced: .NET 11 NativeAOT names shared libraries lib<Name>.dylib. Godot (export plugin,
+         install_name in iOS.targets, gd_mono runtime lookup) expects <Name>.dylib. -->
+    <UseNativeLibPrefix>false</UseNativeLibPrefix>
   </PropertyGroup>
 </Project>
