@@ -83,7 +83,7 @@ EOF
 "$exe" --headless --path "$p" --build-solutions --quit >/dev/null 2>&1 || true
 mkdir -p "$work/out"
 "$exe" --headless --path "$p" --export-debug iOS "$work/out/Game.ipa" >"$work/export.log" 2>&1 || true
-proj=$(ls -d "$work"/out/*.xcodeproj 2>/dev/null | head -1)
+proj=$(ls -d "$work"/out/*.xcodeproj 2>/dev/null | head -1 || true)
 [ -n "$proj" ] || { echo "✘ Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$work/export.log" | tail -40; exit 1; }
 echo "xcodeproj: $proj"
 
@@ -92,7 +92,8 @@ scheme=$(basename "$proj" .xcodeproj)
 xcodebuild -project "$proj" -scheme "$scheme" -sdk iphonesimulator -configuration Debug -derivedDataPath "$work/dd" \
 	-destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build >"$work/xcodebuild.log" 2>&1 \
 	|| { echo "✘ xcodebuild 실패"; grep -E 'error:' "$work/xcodebuild.log" | head -20; exit 1; }
-app=$(find "$work/dd/Build/Products" -name '*.app' -maxdepth 3 | head -1)
+app=$(find "$work/dd/Build/Products" -maxdepth 3 -name '*.app' | head -1 || true)
+[ -n "$app" ] || { echo "✘ .app 없음"; exit 1; }
 echo "app: $app ($(du -sk "$app" | cut -f1) KB)"
 
 echo "── 시뮬레이터 실행"
