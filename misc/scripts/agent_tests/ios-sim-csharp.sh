@@ -119,7 +119,10 @@ EOF
 	"$exe" --headless --path "$p" --export-debug iOS "$w/out/Game.ipa" >"$w/export.log" 2>&1 || true
 	local proj; proj=$(ls -d "$w"/out/*.xcodeproj 2>/dev/null | head -1 || true)
 	[ -n "$proj" ] || { echo "✘ [$trim] Xcode 프로젝트 내보내기 실패"; grep -v '^\s*$' "$w/export.log" | tail -30; return 1; }
-	echo "[$trim] 평가: $(cd "$p" && dotnet msbuild Game.csproj -p:RuntimeIdentifier=ios-arm64 -p:Configuration=ExportDebug -getProperty:UseNativeLibPrefix -getProperty:NativeBinaryPrefix -getProperty:GodotTargetPlatform -getProperty:GodotSdkPackageVersionsFilePath -getProperty:PublishAot 2>&1 | tr -d '\n ' | cut -c1-600)"
+	(cd "$p" && dotnet restore Game.csproj -r ios-arm64 -p:Configuration=ExportDebug >/dev/null 2>&1 || true)
+	echo "[$trim] 평가(restore 후): $(cd "$p" && dotnet msbuild Game.csproj -p:RuntimeIdentifier=ios-arm64 -p:Configuration=ExportDebug -getProperty:UseNativeLibPrefix -getProperty:NativeBinaryPrefix -getProperty:NativeBinary -getProperty:IlcBuildTasksPath -getProperty:SharedLibraryInstallName 2>&1 | tr -d '\n ' | cut -c1-900)"
+	(cd "$p" && dotnet publish Game.csproj -c ExportDebug -r ios-arm64 -o "$w/pubtest" -nologo -v q >/dev/null 2>&1 || true)
+	echo "[$trim] 직접 publish: $(ls "$w/pubtest" 2>/dev/null | tr '\n' ' ')"
 	echo "[$trim] Godot.NET.Sdk 출처: $(grep -o '"Godot.NET.Sdk[^"]*"' "$p"/obj/project.assets.json 2>/dev/null | head -2 | tr '\n' ' ') $(ls ~/.nuget/packages/godot.net.sdk/ 2>/dev/null | tr '\n' ' ')"
 	echo "[$trim] publish 폴더:"; for d in "$p"/.godot/mono/temp/bin/godot-publish-dotnet/*/; do echo "  $(basename "$d"): $(ls "$d" | tr '\n' ' ' | cut -c1-400)"; done
 	echo "[$trim] Game.xcframework:"; find "$w/out/Game.xcframework" -type f -exec ls -l {} \; | awk '{print "  " $5, $NF}' | sed "s#$w/out/##"
