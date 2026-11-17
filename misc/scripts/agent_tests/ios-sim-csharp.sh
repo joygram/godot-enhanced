@@ -22,7 +22,8 @@ sim_lib=bin/libgodot.ios.template_debug.arm64.simulator.a
 
 echo "── glue·어셈블리·NuGet"
 "$exe" --headless --quit --generate-mono-glue modules/mono/glue >/dev/null 2>&1
-python3 modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget >/dev/null
+python3 modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin --push-nupkgs-local ./bin/nuget >"$work/assemblies.log" 2>&1 \
+	|| { echo "✘ 어셈블리 빌드 실패"; grep -E 'error' "$work/assemblies.log" | head -20; exit 1; }
 ver=$(basename "$(ls bin/nuget/Godot.NET.Sdk.*.nupkg | head -1)" .nupkg); ver=${ver#Godot.NET.Sdk.}
 rm -rf "$HOME/.nuget/packages/godot.net.sdk/$ver" "$HOME/.nuget/packages/godotsharp/$ver" "$HOME/.nuget/packages/godot.sourcegenerators/$ver"
 

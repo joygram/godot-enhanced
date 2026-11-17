@@ -314,8 +314,11 @@ namespace GodotTools.Export
                         if (soExt == "dylib")
                         {
                             // The app links the xcframework by install name → must match the new file name.
-                            using var installName = System.Diagnostics.Process.Start("install_name_tool",
-                                ["-id", $"@rpath/{GodotSharpDirs.ProjectAssemblyName}.dylib", nativeAotPath]);
+                            var startInfo = new System.Diagnostics.ProcessStartInfo("install_name_tool");
+                            startInfo.ArgumentList.Add("-id");
+                            startInfo.ArgumentList.Add($"@rpath/{GodotSharpDirs.ProjectAssemblyName}.dylib");
+                            startInfo.ArgumentList.Add(nativeAotPath);
+                            using var installName = System.Diagnostics.Process.Start(startInfo);
                             installName?.WaitForExit();
                             if (installName == null || installName.ExitCode != 0)
                                 throw new InvalidOperationException($"install_name_tool failed for '{nativeAotPath}'.");
