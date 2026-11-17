@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Linux X11 IME 재현: Xvfb + fcitx5 + Mozc + xdotool 로 Godot LineEdit 에 일본어 입력
 # 경우 A: fcitx5-remote 로 mozc 켜고 타이핑 / 경우 B: Ctrl+Space 로 켜고 타이핑
-# 판정: Godot 출력 `IME_RESULT:` 줄에 히라가나 포함 → 통과
+# 판정: Godot 출력 `IME_RESULT:にほんご` 정확히 일치 → 통과 (라틴 글자 샘 = 실패)
 # 필요: bin/godot.*editor*, Xvfb, fcitx5, fcitx5-mozc, xdotool, dbus-launch
 set -uo pipefail
 cd "$(dirname "$0")/../../.."
@@ -56,6 +56,8 @@ eval "$(dbus-launch --sh-syntax)"
 export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx
 fcitx5 -d --replace >"$work/fcitx5.log" 2>&1
 sleep 3
+# mozc 애드온은 첫 전환 때 늦게 로드됨 → 미리 한 번 켜 두어 첫 키가 새는 fcitx 쪽 지연을 판정에서 뺌
+fcitx5-remote -s mozc; sleep 2; fcitx5-remote -s keyboard-us
 cleanup() { pkill -P $$ 2>/dev/null; kill "$xvfb_pid" 2>/dev/null; fcitx5-remote -e 2>/dev/null; kill "$DBUS_SESSION_BUS_PID" 2>/dev/null; }
 trap cleanup EXIT
 
@@ -81,7 +83,7 @@ run_case() {
 	xdotool key Return; sleep 1; xdotool key Return
 	wait "$gpid" 2>/dev/null
 	echo "[$name] $(grep -E '^IME_(PREEDIT|TEXT|RESULT):' "$log" | tail -6 | tr '\n' ' ')"
-	grep -E '^IME_RESULT:.*[ぁ-ん]' "$log" >/dev/null
+	grep -qx 'IME_RESULT:にほんご' "$log"
 }
 
 fail=0
