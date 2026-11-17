@@ -2,6 +2,17 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🍎 0.1.7 — C# iOS: NativeAOT binary −65% (opt-in)
+
+| `ios-arm64` NativeAOT publish (sample C# project) | Default | **`GodotTrimGodotSharp=true`** | |
+|---|---|---|---|
+| `libGame.dylib` | 18.6 MB | **6.6 MB** | **−65%** |
+| Publish folder (with dSYM) | 133.9 MB | **54.4 MB** | **−59%** |
+
+- Default iOS keeps all of `GodotSharp`; `<GodotTrimGodotSharp>true</GodotTrimGodotSharp>` trims it like Web / Android
+- Opt-in until verified on a device / simulator
+- Measured: Mac agent, Xcode 27.2, .NET 11, test [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
+
 ## 🧩 0.1.6 — GDExtension web builds pre-compressed too (side module −76%)
 
 > Web games with GDExtensions (dlink) load a ~43 MB `.side.wasm`. 0.1.3 compression skipped it; now it's covered.
@@ -136,8 +147,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.6`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.6`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.7`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.7`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -151,6 +162,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
 - Godot GDExtension web size, Godot side.wasm too big, Godot dlink web export slow loading
+- Godot C# iOS app size, Godot NativeAOT iOS binary too big, Godot mono iOS export size
 - Godot C# Android APK size, Godot C# Android trimming, Godot mono Android too big, Godot .NET mobile export size
 - Godot 일본어 입력, Godot 일본어 IME 리눅스, Godot Japanese input not working
 - Godot Japanese IME Linux, Godot Mozc fcitx5 ibus, Godot Wayland text-input-v3 IME
@@ -238,6 +250,17 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🍎 0.1.7 — C# iOS: NativeAOT 바이너리 −65% (선택)
+
+| `ios-arm64` NativeAOT publish (표본 C# 프로젝트) | 기본 | **`GodotTrimGodotSharp=true`** | |
+|---|---|---|---|
+| `libGame.dylib` | 18.6 MB | **6.6 MB** | **−65%** |
+| publish 폴더 (dSYM 포함) | 133.9 MB | **54.4 MB** | **−59%** |
+
+- iOS 기본은 `GodotSharp` 통째 유지, `<GodotTrimGodotSharp>true</GodotTrimGodotSharp>` → 웹·Android 처럼 트리밍
+- 기기·시뮬레이터 실행 검증 전까지 선택 옵션
+- 실측: Mac 에이전트, Xcode 27.2, .NET 11, 검사 [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
 
 ### 🧩 0.1.6 — GDExtension 웹 빌드도 미리 압축 (side module −76%)
 
@@ -363,7 +386,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.6`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.6`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.7`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.7`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
