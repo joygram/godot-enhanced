@@ -8,5 +8,7 @@ src="$(dirname "$(readlink -f "$em")")/src"
 f=$(ls "$src"/lib/libdylink.js "$src"/library_dylink.js 2>/dev/null | head -1)
 echo "file: $f"
 rg -n "function loadLibData|loadLibData|readAsync|preloadedWasm|asyncLoad|findObject|loadDynamicLibrary\(|dynamicLibraries" "$f" | head -40
-echo "── loadLibData 본문"
-awk '/function loadLibData/{p=1} p{print NR": "$0; n++} n>40{exit}' "$f"
+echo "── findLibraryFS"
+awk '/findLibraryFS = /{p=1} p{print NR": "$0; n++} n>30{exit}' "$f"
+echo "── loadDylibs 호출 위치"
+rg -n "loadDylibs|addRunDependency\('loadDylibs|preRun" "$src"/preamble.js "$src"/postamble.js "$f" 2>/dev/null | head -20
