@@ -29,7 +29,7 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - `PublishTrimmed` on by default for Web and Android; game assembly kept whole (scripts found by reflection)
 - One rule in `Sdk.targets` for both platforms. iOS unchanged (NativeAOT)
 - Opt out: `<PublishTrimmed>false</PublishTrimmed>`, or keep more with `TrimmerRootAssembly`
-- Measured: Linux agent, .NET 11, test [`dotnet-trim-android.sh`](misc/scripts/agent_tests/dotnet-trim-android.sh), 2026-11-17
+- Measured: Linux agent, .NET 11, test [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
 - Not yet verified: running on an Android device
 
 ## 🇯🇵 0.1.4 — Japanese input on Linux, verified (日本語入力 OK)
@@ -262,7 +262,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 웹·Android `PublishTrimmed` 기본 켬, 게임 어셈블리는 통째 유지
 - 규칙 한 곳 `Sdk.targets`, 두 플랫폼 공용. iOS 그대로 (NativeAOT)
 - 끄기: `<PublishTrimmed>false</PublishTrimmed>`, 더 남기기: `TrimmerRootAssembly`
-- 실측: Linux 에이전트, .NET 11, 검사 [`dotnet-trim-android.sh`](misc/scripts/agent_tests/dotnet-trim-android.sh), 2026-11-17
+- 실측: Linux 에이전트, .NET 11, 검사 [`dotnet-trim.sh`](misc/scripts/agent_tests/dotnet-trim.sh), 2026-11-17
 - 미검증: Android 기기 실행
 
 ### 🇯🇵 0.1.4 — Linux 일본어 입력(Mozc) 검증, 자동 검사
