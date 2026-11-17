@@ -7,6 +7,7 @@
 /**************************************************************************/
 
 #include "../gdscript.h"
+#include "../gdscript_aot.h"
 #include "../gdscript_function.h"
 #include "../gdscript_lambda_callable.h"
 
@@ -197,6 +198,7 @@
 
 template <>
 Variant GDScriptFunction::call_aot<0>(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state) {
+	int *const gd_aot_code = _code_ptr;
 #define GD_AOT_CALL
 #include "../gdscript_vm.cpp"
 #undef GD_AOT_CALL

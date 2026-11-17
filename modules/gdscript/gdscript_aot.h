@@ -12,6 +12,13 @@
 
 class GDScript;
 
+// AOT opcode lambda: makes the bytecode pointer's type depend on the opcode tag, so a discarded opcode body
+// (e.g. OPCODE_OPERATOR writing its cache into the code) is not checked against a const code array.
+template <typename T, typename P>
+inline P *gd_aot_dependent(P *p_ptr) {
+	return p_ptr;
+}
+
 class GDScriptAOT {
 public:
 	// One generated function. Path = script path, class = fully qualified class name, hash = bytecode hash.
