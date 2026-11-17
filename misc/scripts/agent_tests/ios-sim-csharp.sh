@@ -139,11 +139,18 @@ EOF
 	xcrun simctl install "$udid" "$app"
 	local bid; bid=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
 	perl -e 'alarm shift; exec @ARGV' 60 xcrun simctl launch --console-pty --terminate-running-process "$udid" "$bid" >"$w/run.log" 2>&1 || true
-	# Godot iOS print → os_log 일 수 있음. 시스템 로그에서도 모음
-	xcrun simctl spawn "$udid" log show --last 3m --style compact --predicate "process == \"Game\"" >"$w/syslog.log" 2>&1 || true
+	# 이 실행의 pid 로만 시스템 로그 모음 (앞 실행 로그 섞임 방지)
+	local pid; pid=$(sed -n "s/^$bid: \([0-9]*\).*/\1/p" "$w/run.log" | head -1)
+	echo "[$trim] pid ${pid:-?}"
+	if [ -n "$pid" ]; then
+		xcrun simctl spawn "$udid" log show --last 3m --style compact --predicate "processIdentifier == $pid" >"$w/syslog.log" 2>&1 || true
+	else
+		: >"$w/syslog.log"
+	fi
+	cat "$w/run.log" "$w/syslog.log" >"$w/all.log"
 	echo "[$trim] Godot·.NET 관련 로그:"
-	cat "$w/run.log" "$w/syslog.log" | grep -iE 'trim ok|godot|\.net|mono|dotnet|assembl|script|error|exception|crash|abort' | grep -viE 'coreaudio|gamecontroller|UIKit|FrontBoard' | head -30 || true
-	cat "$w/run.log" "$w/syslog.log" | grep -q 'trim ok 3'
+	grep -iE 'trim ok|godot|\.net|mono|dotnet|assembl|script|error|exception|crash|abort|fault|signal' "$w/all.log" | grep -viE 'coreaudio|gamecontroller|UIKit|FrontBoard|networkd' | head -30 || true
+	grep -q 'trim ok 3' "$w/all.log"
 }
 
 fail=0
