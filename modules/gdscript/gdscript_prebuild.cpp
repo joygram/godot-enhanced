@@ -191,7 +191,7 @@ struct FnKey {
 
 struct ReverseTables {
 	bool built = false;
-	HashMap<uintptr_t, FnKey> operators, setters, getters, keyed_setters, keyed_getters, indexed_setters,
+	HashMap<uint64_t, FnKey> operators, setters, getters, keyed_setters, keyed_getters, indexed_setters,
 			indexed_getters, builtin_methods, constructors, utilities, gds_utilities;
 };
 
@@ -205,8 +205,8 @@ ReverseTables &reverse_tables() {
 		for (int a = 0; a < Variant::VARIANT_MAX; a++) {
 			for (int b = 0; b < Variant::VARIANT_MAX; b++) {
 				Variant::ValidatedOperatorEvaluator f = Variant::get_validated_operator_evaluator((Variant::Operator)op, (Variant::Type)a, (Variant::Type)b);
-				if (f && !t.operators.has((uintptr_t)f)) {
-					t.operators[(uintptr_t)f] = FnKey{ op, a, b, StringName() };
+				if (f && !t.operators.has((uint64_t)(uintptr_t)f)) {
+					t.operators[(uint64_t)(uintptr_t)f] = FnKey{ op, a, b, StringName() };
 				}
 			}
 		}
@@ -217,34 +217,34 @@ ReverseTables &reverse_tables() {
 		Variant::get_member_list(vt, &members);
 		for (const StringName &m : members) {
 			if (Variant::ValidatedSetter s = Variant::get_member_validated_setter(vt, m)) {
-				t.setters[(uintptr_t)s] = FnKey{ type, 0, 0, m };
+				t.setters[(uint64_t)(uintptr_t)s] = FnKey{ type, 0, 0, m };
 			}
 			if (Variant::ValidatedGetter g = Variant::get_member_validated_getter(vt, m)) {
-				t.getters[(uintptr_t)g] = FnKey{ type, 0, 0, m };
+				t.getters[(uint64_t)(uintptr_t)g] = FnKey{ type, 0, 0, m };
 			}
 		}
 		if (Variant::ValidatedKeyedSetter f = Variant::get_member_validated_keyed_setter(vt)) {
-			t.keyed_setters[(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
+			t.keyed_setters[(uint64_t)(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
 		}
 		if (Variant::ValidatedKeyedGetter f = Variant::get_member_validated_keyed_getter(vt)) {
-			t.keyed_getters[(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
+			t.keyed_getters[(uint64_t)(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
 		}
 		if (Variant::ValidatedIndexedSetter f = Variant::get_member_validated_indexed_setter(vt)) {
-			t.indexed_setters[(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
+			t.indexed_setters[(uint64_t)(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
 		}
 		if (Variant::ValidatedIndexedGetter f = Variant::get_member_validated_indexed_getter(vt)) {
-			t.indexed_getters[(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
+			t.indexed_getters[(uint64_t)(uintptr_t)f] = FnKey{ type, 0, 0, StringName() };
 		}
 		List<StringName> methods;
 		Variant::get_builtin_method_list(vt, &methods);
 		for (const StringName &m : methods) {
 			if (Variant::ValidatedBuiltInMethod f = Variant::get_validated_builtin_method(vt, m)) {
-				t.builtin_methods[(uintptr_t)f] = FnKey{ type, 0, 0, m };
+				t.builtin_methods[(uint64_t)(uintptr_t)f] = FnKey{ type, 0, 0, m };
 			}
 		}
 		for (int i = 0; i < Variant::get_constructor_count(vt); i++) {
 			if (Variant::ValidatedConstructor f = Variant::get_validated_constructor(vt, i)) {
-				t.constructors[(uintptr_t)f] = FnKey{ type, i, 0, StringName() };
+				t.constructors[(uint64_t)(uintptr_t)f] = FnKey{ type, i, 0, StringName() };
 			}
 		}
 	}
@@ -252,24 +252,24 @@ ReverseTables &reverse_tables() {
 	Variant::get_utility_function_list(&utils);
 	for (const StringName &u : utils) {
 		if (Variant::ValidatedUtilityFunction f = Variant::get_validated_utility_function(u)) {
-			t.utilities[(uintptr_t)f] = FnKey{ 0, 0, 0, u };
+			t.utilities[(uint64_t)(uintptr_t)f] = FnKey{ 0, 0, 0, u };
 		}
 	}
 	List<StringName> gds_utils;
 	GDScriptUtilityFunctions::get_function_list(&gds_utils);
 	for (const StringName &u : gds_utils) {
 		if (GDScriptUtilityFunctions::FunctionPtr f = GDScriptUtilityFunctions::get_function(u)) {
-			t.gds_utilities[(uintptr_t)f] = FnKey{ 0, 0, 0, u };
+			t.gds_utilities[(uint64_t)(uintptr_t)f] = FnKey{ 0, 0, 0, u };
 		}
 	}
 	return t;
 }
 
 template <typename T>
-bool save_table(Writer &w, const Vector<T> &p_table, const HashMap<uintptr_t, FnKey> &p_keys, String &r_error, const char *p_what) {
+bool save_table(Writer &w, const Vector<T> &p_table, const HashMap<uint64_t, FnKey> &p_keys, String &r_error, const char *p_what) {
 	w.u32(p_table.size());
 	for (const T &f : p_table) {
-		const FnKey *k = p_keys.getptr((uintptr_t)f);
+		const FnKey *k = p_keys.getptr((uint64_t)(uintptr_t)f);
 		if (!k) {
 			r_error = vformat("unknown %s pointer", p_what);
 			return false;
