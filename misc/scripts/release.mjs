@@ -15,6 +15,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+// 저장소를 못박는다 — 업스트림 원격이 있으면 gh 가 godotengine/godot 로 보낸다.
+const REPO = "joygram/godot-enhanced";
 const [kind, via, ...sconsArgs] = process.argv.slice(2);
 const workflows = { editor: "enhanced_editor_release.yml", "web-template": "enhanced_web_template.yml", "dotnet-web": "enhanced_dotnet_release.yml" };
 if (!workflows[kind] || !via || (via !== "ci" && sconsArgs.length === 0)) {
@@ -29,7 +31,7 @@ const run = (cmd, args, opts = {}) => {
 // CI 경로
 if (via === "ci") {
 	// 저장소를 못박는다 — 업스트림 원격이 있으면 gh 가 godotengine/godot 로 보낸다.
-	run("gh", ["workflow", "run", workflows[kind], "--ref", "main", "--repo", "joygram/godot-enhanced"]);
+	run("gh", ["workflow", "run", workflows[kind], "--ref", "main", "--repo", REPO]);
 	console.log(`[release] ✔ CI 실행: ${workflows[kind]} (gh run list --workflow ${workflows[kind]})`);
 	process.exit(0);
 }
@@ -59,7 +61,8 @@ if (via === "local") {
 if (!files.length) { console.error("[release] ✘ 올릴 산출물 없음"); process.exit(1); }
 
 // 업로드 (릴리스 없으면 생성)
-const exists = spawnSync("gh", ["release", "view", tag], { cwd: root, stdio: "ignore" }).status === 0;
-if (!exists) run("gh", ["release", "create", tag, "--target", sha, "--title", `${kind} ${version} (godot-enhanced)`, "--notes", `godot-enhanced ${version} — ${kind}. Built ${via === "local" ? "locally" : `on ${via}`} from ${sha.slice(0, 10)}.`]);
-run("gh", ["release", "upload", tag, ...files, "--clobber"]);
+const exists = spawnSync("gh", ["release", "view", tag, "--repo", REPO], { cwd: root, stdio: "ignore" }).status === 0;
+if (!exists) run("gh", ["release", "create", tag, "--repo", REPO, "--target", sha, "--title", `${kind} ${version} (godot-enhanced)`, "--notes", `godot-enhanced ${version} — ${kind}. Built ${via === "local" ? "locally" : `on ${via}`} from ${sha.slice(0, 10)}.`]);
+// 릴리스 자산 = 템플릿 zip·편집기 묶음만 (빌드 중간 산출물 wasm·js 는 올리지 않음)
+run("gh", ["release", "upload", tag, "--repo", REPO, ...files.filter((f) => !/\.(wasm|js)$/.test(f)), "--clobber"]);
 console.log(`[release] ✔ ${tag} ← ${files.length}개 (${via})\n  ${files.map((f) => f.slice(root.length + 1)).join("\n  ")}`);
