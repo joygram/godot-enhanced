@@ -36,6 +36,9 @@ mvk=$(ls -d "$HOME"/VulkanSDK/*/macOS/lib/MoltenVK.xcframework 2>/dev/null | tai
 [ -n "$mvk" ] || { echo "✘ MoltenVK.xcframework 없음 (~/VulkanSDK)"; exit 1; }
 cp -R "$mvk" "$t/"
 (cd "$t" && zip -qr -y "$work/ios.zip" .)
+# 내보내기는 기본 템플릿 위치를 확인함 → 같은 파일을 거기에도
+tdir="$HOME/Library/Application Support/Godot/export_templates/$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')").stable.mono"
+mkdir -p "$tdir"; cp "$work/ios.zip" "$tdir/ios.zip"
 
 echo "── 표본 C# 프로젝트 (GodotTrimGodotSharp=$TRIM)"
 p="$work/proj"; mkdir -p "$p"
