@@ -131,15 +131,23 @@ static void _generate_class(const GDScript *p_script, int &r_next_id, String &r_
 			code += itos(function_code[i]) + ",";
 		}
 
+		// OPCODE_OPERATOR caches the resolved evaluator into the bytecode at run time → that function's code stays writable.
+		// Everything else is a constant array, so clang folds operand reads.
+		bool writes_code = false;
+		for (int ip : offsets) {
+			writes_code = writes_code || function_code[ip] == GDScriptFunction::OPCODE_OPERATOR;
+		}
+		const String qualifier = writes_code ? "" : "const ";
+
 		r_source += "// " + p_script->get_fully_qualified_name() + "." + String(E.key) + "\n";
-		r_source += "static const int gd_aot_code_" + itos(id) + "[] = {" + code + "};\n";
+		r_source += "static " + qualifier + "int gd_aot_code_" + itos(id) + "[] = {" + code + "};\n";
 		r_source += "#define GD_AOT_RUN \\\n\tfor (;;) { \\\n\t\tswitch (ip) { \\\n";
 		for (int ip : offsets) {
 			r_source += "\t\t\tcase " + itos(ip) + ": { const int gd_next = aot_op(std::integral_constant<int, " + itos(function_code[ip]) + ">{}); if (gd_next == GD_AOT_EXIT) { goto OPSEXIT; } ip = gd_next; } continue; \\\n";
 		}
 		r_source += "\t\t\tdefault: goto OPSEXIT; \\\n\t\t} \\\n\t}\n";
 		r_source += "template <>\nVariant GDScriptFunction::call_aot<" + itos(id) + ">(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state) {\n";
-		r_source += "\tconst int *const _code_ptr = gd_aot_code_" + itos(id) + ";\n";
+		r_source += "\t" + qualifier + "int *const _code_ptr = gd_aot_code_" + itos(id) + ";\n";
 		r_source += "#define GD_AOT_CALL\n#include \"modules/gdscript/gdscript_vm.cpp\"\n#undef GD_AOT_CALL\n#undef GD_AOT_RUN\n\n";
 
 		r_registry.push_back("\t{ " + _c_string(p_script->get_script_path()) + ", " + _c_string(p_script->get_fully_qualified_name()) + ", " + _c_string(String(E.key)) + ", " + String::num_uint64(GDScriptAOT::code_hash(function)) + "ULL, &GDScriptFunction::call_aot<" + itos(id) + "> },");
