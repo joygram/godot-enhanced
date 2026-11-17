@@ -28,6 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+// godot-enhanced AOT: with GD_AOT_CALL defined, this file is included inside a generated
+// GDScriptFunction::call_aot<ID>() body (patches/gdscript-aot.md). It then emits only the call() body,
+// and the opcode dispatch becomes a templated lambda that keeps one opcode per instantiation.
+#ifndef GD_AOT_CALL
+
 #include "gdscript.h"
 #include "gdscript_function.h"
 #include "gdscript_lambda_callable.h"
@@ -454,6 +459,39 @@ void (*type_init_function_table[])(Variant *) = {
 #define OPCODE_OUT break
 #endif // defined(__GNUC__) || defined(__clang__)
 
+// Opcodes sharing one body (fall-through labels).
+#define OPCODE2(m_a, m_b) OPCODE(m_a) OPCODE(m_b)
+#define OPCODE3(m_a, m_b, m_c) OPCODE(m_a) OPCODE(m_b) OPCODE(m_c)
+
+#else // GD_AOT_CALL
+
+#ifdef DEBUG_ENABLED
+#error "GDScript AOT is for release templates only (no DEBUG_ENABLED)."
+#endif
+
+extern void (*type_init_function_table[])(Variant *);
+
+#define GD_AOT_EXIT (-1)
+#define OPCODES_TABLE
+#define OPCODE(m_op) \
+	}                \
+	if constexpr (GD_AOT_OP == (m_op)) {
+#define OPCODE2(m_a, m_b) \
+	}                     \
+	if constexpr (GD_AOT_OP == (m_a) || GD_AOT_OP == (m_b)) {
+#define OPCODE3(m_a, m_b, m_c) \
+	}                          \
+	if constexpr (GD_AOT_OP == (m_a) || GD_AOT_OP == (m_b) || GD_AOT_OP == (m_c)) {
+#define DISPATCH_OPCODE return ip
+#define OPCODE_BREAK return GD_AOT_EXIT
+#define OPCODES_END \
+	OPSEXIT:
+#define OPCODES_OUT \
+	OPSOUT:
+#define OPCODE_OUT goto OPSOUT
+
+#endif // GD_AOT_CALL
+
 // Helpers for VariantInternal methods in macros.
 #define OP_GET_BOOL get_bool
 #define OP_GET_INT get_int
@@ -496,7 +534,13 @@ void (*type_init_function_table[])(Variant *) = {
 #define METHOD_CALL_ON_NULL_VALUE_ERROR(method_pointer) "Cannot call method '" + (method_pointer)->get_name() + "' on a null value."
 #define METHOD_CALL_ON_FREED_INSTANCE_ERROR(method_pointer) "Cannot call method '" + (method_pointer)->get_name() + "' on a previously freed instance."
 
+#ifndef GD_AOT_CALL
 Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_args, int p_argcount, Callable::CallError &r_err, CallState *p_state) {
+	// AOT-compiled body (no await) runs instead of the bytecode loop; resumed states never reach it.
+	if (_aot_call && !p_state) {
+		return (this->*_aot_call)(p_instance, p_args, p_argcount, r_err, p_state);
+	}
+#endif
 	GodotProfileZoneScript(this, source, name, name, _initial_line);
 
 	OPCODES_TABLE;
@@ -750,6 +794,12 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 	bool awaited = false;
 	Variant *variant_addresses[ADDR_TYPE_MAX] = { stack, _constants_ptr, p_instance ? p_instance->members.ptrw() : nullptr };
 
+#ifdef GD_AOT_CALL
+	{
+		// One opcode body per instantiation; the generated GD_AOT_RUN calls it with constant ip.
+		auto aot_op = [&]<int GD_AOT_OP>() __attribute__((always_inline)) -> int {
+			if constexpr (false) {
+#else
 #ifdef DEBUG_ENABLED
 	OPCODE_WHILE(ip < _code_size) {
 		int last_opcode = _code_ptr[ip];
@@ -758,6 +808,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 #endif
 
 		OPCODE_SWITCH(_code_ptr[ip]) {
+#endif // GD_AOT_CALL
 			OPCODE(OPCODE_OPERATOR) {
 				constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*_code_ptr);
 				CHECK_SPACE(7 + _pointer_size);
@@ -1898,9 +1949,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 			}
 			DISPATCH_OPCODE;
 
-			OPCODE(OPCODE_CALL_ASYNC)
-			OPCODE(OPCODE_CALL_RETURN)
-			OPCODE(OPCODE_CALL) {
+			OPCODE3(OPCODE_CALL_ASYNC, OPCODE_CALL_RETURN, OPCODE_CALL) {
 				bool call_ret = (_code_ptr[ip]) != OPCODE_CALL;
 #ifdef DEBUG_ENABLED
 				bool call_async = (_code_ptr[ip]) == OPCODE_CALL_ASYNC;
@@ -2026,8 +2075,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 			}
 			DISPATCH_OPCODE;
 
-			OPCODE(OPCODE_CALL_METHOD_BIND)
-			OPCODE(OPCODE_CALL_METHOD_BIND_RET) {
+			OPCODE2(OPCODE_CALL_METHOD_BIND, OPCODE_CALL_METHOD_BIND_RET) {
 				bool call_ret = (_code_ptr[ip]) == OPCODE_CALL_METHOD_BIND_RET;
 				LOAD_INSTRUCTION_ARGS
 				CHECK_SPACE(3 + instr_arg_count);
@@ -3958,6 +4006,11 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 			}
 #endif
 		}
+#ifdef GD_AOT_CALL
+			return GD_AOT_EXIT;
+		};
+		GD_AOT_RUN
+#endif // GD_AOT_CALL
 
 		OPCODES_END
 #ifdef DEBUG_ENABLED
