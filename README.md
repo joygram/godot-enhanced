@@ -1,6 +1,24 @@
-# godot-enhanced — Godot 4.7.2 with smaller web downloads, Web (WASM) memory patch, C# web export and Korean IME fix
+# godot-enhanced — Godot 4.7.2 with smaller web downloads, Web (WASM) memory patch, C# web export, Korean IME fix and verified Japanese input
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
+
+## 🇯🇵 0.1.4 — Japanese input on Linux, verified (日本語入力 OK)
+
+> "Godot won't take Japanese on Linux" — tested on X11 and Wayland with fcitx5 + Mozc, now checked on every agent run.
+
+| Session | Switch | Result |
+|---|---|---|
+| X11 + fcitx5 | tray / `fcitx5-remote` | `にほんご` ✔ |
+| X11 + fcitx5 | `Ctrl+Space` | `にほんご` ✔ |
+| Wayland (sway) + fcitx5 | tray / `fcitx5-remote` | `にほんご` ✔, preedit shown |
+| Wayland (sway) + fcitx5 | `Ctrl+Space` | `にほんご` ✔, preedit shown |
+
+- Engine unchanged: X11 (XIM) and Wayland (`text-input-v3`) both work
+- `Ctrl+Space` reaches fcitx5, not swallowed
+- First key right after the first Mozc use may come out Latin → Mozc start-up, same in a plain Xlib app
+- Not verified: KDE KWin (headless KWin can't inject keys)
+- Setup tips, method, raw results: [patches/linux-ime-japanese.md](patches/linux-ime-japanese.md)
+- Tests: [`ime-linux.sh`](misc/scripts/agent_tests/ime-linux.sh), [`ime-wayland.sh`](misc/scripts/agent_tests/ime-wayland.sh)
 
 ## 🗜️ 0.1.3 — web download up to −75%, no server setup
 
@@ -88,8 +106,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.3`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.3`
+- Version `<godot>-<enhanced>` → `4.7.2-0.1.4`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.1.4`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -102,25 +120,13 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot ARM64 Windows Linux, Apple Silicon Godot
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
 - Godot Korean IME, Godot 한글 입력 버그, Godot Hangul input, CJK input, LineEdit / TextEdit caret
+- Godot 일본어 입력, Godot 일본어 IME 리눅스, Godot Japanese input not working
 - Godot Japanese IME Linux, Godot Mozc fcitx5 ibus, Godot Wayland text-input-v3 IME
 - Godot 日本語入力, Godot 日本語入力 できない, Godot IME 変換 できない, Godot Linux Mozc fcitx5, Godot Wayland 日本語, Godot LineEdit 日本語
 
-### 🇯🇵 Linux Japanese input (Mozc) — verified, automated
-
-| Session | Switch | Result |
-|---|---|---|
-| X11 (Xvfb) + fcitx5 | tray / `fcitx5-remote` | `にほんご` ✔ |
-| X11 (Xvfb) + fcitx5 | `Ctrl+Space` | `にほんご` ✔ |
-| Wayland (sway) + fcitx5 | tray / `fcitx5-remote` | `にほんご` ✔ (preedit shown) |
-| Wayland (sway) + fcitx5 | `Ctrl+Space` | `にほんご` ✔ (preedit shown) |
-
-- Engine unchanged: Japanese input already works on X11 and Wayland `text-input-v3`
-- First key after the very first Mozc use can leak as Latin → Mozc server start-up, same in a plain Xlib app
-- Not verified: KDE KWin (no key injection in headless KWin)
-- Tests: [`ime-linux.sh`](misc/scripts/agent_tests/ime-linux.sh), [`ime-wayland.sh`](misc/scripts/agent_tests/ime-wayland.sh), run on the Linux build agent
-
 | Patch | Platform | Fixes |
 |---|---|---|
+| [Linux Japanese input check](patches/linux-ime-japanese.md) | Linux X11 + Wayland | Mozc via fcitx5 verified, automated tests |
 | Web pre-compression | Web | Big `.pck` / `.wasm` downloads, no server gzip |
 | [Windows IME queued key](patches/windows-ime-queued-key.md) | Windows editor + game | Korean (Hangul) typing loses caret advance after a syllable is committed |
 | [GDScript parser release](patches/gdscript-parser-release.md) | All, aimed at Web / WASM | Syntax trees of mutually dependent scripts stay alive after compile → high peak memory at boot |
@@ -200,6 +206,21 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🇯🇵 0.1.4 — Linux 일본어 입력(Mozc) 검증, 자동 검사
+
+| 세션 | 전환 | 결과 |
+|---|---|---|
+| X11 + fcitx5 | 트레이 / `fcitx5-remote` | `にほんご` ✔ |
+| X11 + fcitx5 | `Ctrl+Space` | `にほんご` ✔ |
+| Wayland (sway) + fcitx5 | 트레이 / `fcitx5-remote` | `にほんご` ✔, 조합 중 글자 표시 |
+| Wayland (sway) + fcitx5 | `Ctrl+Space` | `にほんご` ✔, 조합 중 글자 표시 |
+
+- 엔진 수정 없음: X11(XIM)·Wayland(`text-input-v3`) 정상
+- `Ctrl+Space` 가로채기 없음 → fcitx5 로 전달
+- Mozc 첫 사용 직후 첫 키 라틴 샘 → Mozc 기동 지연, Xlib 단독 앱도 같음
+- 미검증: KDE KWin (headless KWin 키 주입 불가)
+- 설정 팁·방법·원 결과: [patches/linux-ime-japanese.md](patches/linux-ime-japanese.md)
 
 ### 🗜️ 0.1.3 — 웹 다운로드 최대 −75%, 서버 설정 없음
 
@@ -284,27 +305,13 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.3`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.3`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.4`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.4`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|
 | [Windows 한글 IME 패치](patches/windows-ime-queued-key.md) | Windows 편집기·게임 | 한글 음절을 확정한 뒤 다음 글자를 입력하면 커서가 앞으로 가지 않는 문제 |
 | [GDScript 파서 해제 패치](patches/gdscript-parser-release.md) | 전체 (웹/WASM에서 효과 큼) | 서로 참조하는 스크립트의 구문 트리가 컴파일 뒤에도 남아 부팅 때 메모리 최고치가 높아지는 문제 |
 | [C#(.NET) 웹 내보내기 패치](patches/dotnet-web-export.md) | 웹 + C# 편집기 | C# 프로젝트를 웹으로 내보냅니다(WebAssembly 위의 Mono). 실험적 기능이며 업스트림 PR #106125와 ComplexRobot의 재적용본을 가져왔습니다 |
-
-### 🇯🇵 Linux 일본어 입력(Mozc) — 검증, 자동 검사
-
-| 세션 | 전환 | 결과 |
-|---|---|---|
-| X11 (Xvfb) + fcitx5 | 트레이 / `fcitx5-remote` | `にほんご` ✔ |
-| X11 (Xvfb) + fcitx5 | `Ctrl+Space` | `にほんご` ✔ |
-| Wayland (sway) + fcitx5 | 트레이 / `fcitx5-remote` | `にほんご` ✔ (조합 중 글자 표시) |
-| Wayland (sway) + fcitx5 | `Ctrl+Space` | `にほんご` ✔ (조합 중 글자 표시) |
-
-- 엔진 수정 없음: X11·Wayland `text-input-v3` 일본어 입력 정상
-- Mozc 첫 사용 직후 첫 키 라틴 샘 → Mozc 서버 기동 지연, Xlib 단독 앱도 같음
-- 미검증: KDE KWin (headless KWin 키 주입 불가)
-- 검사: [`ime-linux.sh`](misc/scripts/agent_tests/ime-linux.sh), [`ime-wayland.sh`](misc/scripts/agent_tests/ime-wayland.sh), Linux 빌드 에이전트
 
 ### 브랜치
 
