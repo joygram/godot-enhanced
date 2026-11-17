@@ -2,9 +2,17 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
-## 🔒 0.1.10 — export templates locked to the enhanced release
+## ⚡ 0.2.0 — GDScript prebuild, export templates locked to the release
 
-- Template folder: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.1.10`**
+**GDScript prebuild** (`script_export_mode=3`)
+- Export stores compiled classes + bytecode; load skips parse · analyze · compile
+- Mismatch or unsupported content → falls back to binary tokens (mode 2)
+- Baseline to beat (400 scripts, mode 2): analyze 142 ms, compile 40 ms, parse 23 ms
+- Check: agent test `gdscript-prebuild` runs feature scripts in mode 2 and 3, compares output
+- Design: [patches/gdscript-prebuild.md](patches/gdscript-prebuild.md)
+
+**Export templates locked**
+- Template folder: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.2.0`**
 - Editor exports only with templates from its own release; stock Godot or another release never picked up
 - Applies to: export lookup, template manager, C# export
 - Install: put release templates in `export_templates/4.7.2.stable.enhanced-<version>/`
@@ -171,8 +179,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 
 - Measured: Windows, headless Chrome, debug = release
 - Reference: official Godot empty GDScript web = 55.4 MB WASM heap
-- Version `<godot>-<enhanced>` → `4.7.2-0.1.10`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
-- Engine build name: `enhanced-0.1.10`
+- Version `<godot>-<enhanced>` → `4.7.2-0.2.0`, source [`ENHANCED_VERSION`](ENHANCED_VERSION)
+- Engine build name: `enhanced-0.2.0`
 
 **Keywords:**
 - Godot 4 C# web export, Godot 4.7 C# HTML5, "C# projects cannot be exported to the web" fix
@@ -276,9 +284,17 @@ git cherry-pick 4.7.2-stable..origin/main
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
 
-### 🔒 0.1.10 — 내보내기 템플릿을 enhanced 릴리스에 고정
+### ⚡ 0.2.0 — GDScript 사전 빌드, 내보내기 템플릿을 릴리스에 고정
 
-- 템플릿 폴더: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.1.10`**
+**GDScript 사전 빌드** (`script_export_mode=3`)
+- 내보낼 때 컴파일된 클래스·바이트코드 저장, 실행 시 파싱·분석·컴파일 건너뜀
+- 버전 불일치·미지원 내용 → 바이너리 토큰(모드 2)으로 대체
+- 넘을 기준선 (스크립트 400개, 모드 2): 분석 142 ms, 컴파일 40 ms, 파싱 23 ms
+- 검사: 에이전트 검사 `gdscript-prebuild` — 기능 스크립트를 모드 2·3 으로 실행해 출력 비교
+- 설계: [patches/gdscript-prebuild.md](patches/gdscript-prebuild.md)
+
+**내보내기 템플릿 고정**
+- 템플릿 폴더: `4.7.2.stable` → **`4.7.2.stable.enhanced-0.2.0`**
 - 편집기는 자기 릴리스 템플릿으로만 내보냄; 공식 Godot·다른 릴리스 템플릿 안 씀
 - 적용: 내보내기 템플릿 찾기, 템플릿 관리자, C# 내보내기
 - 설치: 릴리스 템플릿 → `export_templates/4.7.2.stable.enhanced-<버전>/`
@@ -433,7 +449,7 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 전체 수치·조건: [BENCHMARKS.md](BENCHMARKS.md)
 
 - 측정: Windows, headless Chrome, debug·release 템플릿 동일 결과. 참고값: 공식 Godot 빈 GDScript 웹 = WASM 힙 55.4 MB
-- 버전: `<Godot>-<enhanced>` → `4.7.2-0.1.10`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.1.10`
+- 버전: `<Godot>-<enhanced>` → `4.7.2-0.2.0`. 기준 파일 [`ENHANCED_VERSION`](ENHANCED_VERSION). 엔진 빌드 이름 `enhanced-0.2.0`
 
 | 패치 | 플랫폼 | 해결하는 문제 |
 |---|---|---|

@@ -28,7 +28,8 @@ const run = (cmd, args, opts = {}) => {
 
 // CI 경로
 if (via === "ci") {
-	run("gh", ["workflow", "run", workflows[kind], "--ref", "main"]);
+	// 저장소를 못박는다 — 업스트림 원격이 있으면 gh 가 godotengine/godot 로 보낸다.
+	run("gh", ["workflow", "run", workflows[kind], "--ref", "main", "--repo", "joygram/godot-enhanced"]);
 	console.log(`[release] ✔ CI 실행: ${workflows[kind]} (gh run list --workflow ${workflows[kind]})`);
 	process.exit(0);
 }
