@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_URL="https://github.com/joygram/godot-enhanced.git"
 REPO_DIR="${REPO_DIR:-$HOME/workspace/godot-enhanced}"
 PORT="${BUILD_AGENT_PORT:-8790}"
-EMSDK_VERSION="${EMSDK_VERSION:-6.0.2}"
+EMSDK_VERSION="${EMSDK_VERSION:-$(curl -fsSL https://raw.githubusercontent.com/joygram/godot-enhanced/main/misc/scripts/emscripten-version | tr -d '[:space:]')}"
 CONF_DIR="$HOME/.config/godot-enhanced"
 OS="$(uname -s)"
 MISE="$HOME/.local/bin/mise"

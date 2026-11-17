@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # 웹 도구 준비: Emscripten(~/emsdk), Playwright 브라우저(Chromium·WebKit). 이미 있으면 건너뜀
-# EMSDK_VERSION 기본 6.0.2 (GDScript·C# 웹 공통). 진행 출력은 그대로 보임
+# EMSDK_VERSION 기본 = misc/scripts/emscripten-version (웹 템플릿). 진행 출력은 그대로 보임
 # 직접 실행: ~/.local/bin/mise exec -- bash misc/scripts/agent_tests/provision-web.sh
 set -euo pipefail
-ver="${EMSDK_VERSION:-6.0.2}"
+ver="${EMSDK_VERSION:-$(tr -d '[:space:]' < "$(dirname "$0")/../emscripten-version")}"
 step() { printf '\n── %s\n' "$*"; }
 
 step "python ($(python3 --version 2>&1))"

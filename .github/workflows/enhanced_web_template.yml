@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       emscripten:
-        description: "Emscripten version (must match GDExtension web builds for dlink)"
-        default: "6.0.2"
+        description: "Emscripten version override (empty = misc/scripts/emscripten-version; must match GDExtension web builds for dlink)"
+        default: ""
 
 permissions:
   contents: write
@@ -34,10 +34,14 @@ jobs:
         run: |
           if gh release view "${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then echo "found=true" >> "$GITHUB_OUTPUT"; fi
 
+      - name: Emscripten version
+        id: emver
+        run: echo "version=${{ inputs.emscripten }}" | sed "s/=$/=$(tr -d '[:space:]' < misc/scripts/emscripten-version)/" >> "$GITHUB_OUTPUT"
+
       - uses: mymindstorm/setup-emsdk@v14
         if: steps.existing.outputs.found != 'true'
         with:
-          version: ${{ inputs.emscripten || '6.0.2' }}
+          version: ${{ steps.emver.outputs.version }}
 
       - name: Build web templates
         if: steps.existing.outputs.found != 'true'
