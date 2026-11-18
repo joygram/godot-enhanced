@@ -20,4 +20,16 @@
   <PropertyGroup>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+
+  <!--
+    godot-enhanced: AOT web publish (RunAOTCompilation) → the AOT template takes wasm_m2n_invoke.g.h from the
+    game's publish (mono_wasm_aot_dir), not GetRuntimePack. Compile the same GodotSharp signature declarations
+    into the game so its table has them too (else aot-runtime-wasm.c:188 "CANNOT HANDLE INTERP ICALL SIG").
+  -->
+  <PropertyGroup Condition=" '$(RunAOTCompilation)' == 'true' ">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(RunAOTCompilation)' == 'true' ">
+    <Compile Include="$(MSBuildThisFileDirectory)GodotSharpSignatures.g.cs" Visible="false" />
+  </ItemGroup>
 </Project>

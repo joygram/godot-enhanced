@@ -39,6 +39,8 @@
     <None Include="Sdk\Android.targets" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\Browser.props" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\Browser.targets" Pack="true" PackagePath="Sdk" />
+    <!-- AOT web publish: same signature declarations as GetRuntimePack (Browser.targets) -->
+    <None Include="..\..\..\runtime\GetRuntimePack\GodotSharpSignatures.g.cs" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\iOS.props" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\iOS.targets" Pack="true" PackagePath="Sdk" />
     <None Include="Sdk\GodotSharp.TrimRoots.xml" Pack="true" PackagePath="Sdk" />
