@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../../.."
 root=$PWD
 w="${JOB_DIR:-/tmp}/dotnet-web-aot"
-rm -rf "$w"; mkdir -p "$w"
+rm -rf "$w"; mkdir -p "$w" "$w/out-std" "$w/out-aot"
 arch=$(uname -m | sed 's/aarch64/arm64/')
 exe="bin/godot.linuxbsd.editor.$arch.mono"
 [ -x "$exe" ] || { echo "✘ C# 편집기 없음: $exe"; exit 1; }
