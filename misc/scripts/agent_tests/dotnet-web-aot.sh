@@ -13,6 +13,7 @@ exe="bin/godot.linuxbsd.editor.$arch.mono"
 [ -x "$exe" ] || { echo "✘ C# 편집기 없음: $exe"; exit 1; }
 repo="${AOT_GAME_REPO:-joygram/yangvil-godot-csharp}"
 tag="${AOT_TAG:-web-aot}"
+[ "${AOT_DEBUG:-}" = 1 ] && tag="${AOT_TAG:-web-aot-debug}"
 jobs=$(nproc)
 py=$(command -v python3)
 
@@ -61,7 +62,9 @@ echo "AOT 어셈블리: $(ls "$aot"/*.dll.o | wc -l)개"
 
 echo "── AOT 전용 웹 템플릿 (mono_wasm_aot_dir)"
 cp "$tdir/web_release.zip" "$w/web_release.std.zip"
-scons platform=web target=template_release module_mono_enabled=yes optimize=speed lto=full mono_wasm_aot_dir="$aot" ccflags="-DNDEBUG" linkflags="-sMALLOC=mimalloc" -j"$jobs" >"$w/build-aot.log" 2>&1 \
+# AOT_DEBUG=1 → wasm 함수 이름 남김 (스택 추적용)
+dbg=$([ "${AOT_DEBUG:-}" = 1 ] && echo "debug_symbols=yes lto=none" || echo "lto=full")
+scons platform=web target=template_release module_mono_enabled=yes optimize=speed $dbg mono_wasm_aot_dir="$aot" ccflags="-DNDEBUG" linkflags="-sMALLOC=mimalloc" -j"$jobs" >"$w/build-aot.log" 2>&1 \
 	|| { grep -m10 -E 'error' "$w/build-aot.log"; exit 1; }
 grep -m1 "Linking .* AOT-compiled" "$w/build-aot.log" || { echo "✘ AOT 링크 로그 없음"; exit 1; }
 cp bin/godot.web.template_release.wasm32.mono.zip "$tdir/web_release.zip"
