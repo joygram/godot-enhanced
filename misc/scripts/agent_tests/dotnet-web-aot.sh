@@ -74,7 +74,9 @@ ls -l "$w/out-aot" | tee "${JOB_DIR:-/tmp}/aot-files.txt"
 
 echo "── 업로드 $repo@$tag"
 (cd "$w/out-aot" && zip -qr -9 "$w/yangvil-web-aot.zip" .)
-gh release view "$tag" -R "$repo" >/dev/null 2>&1 || gh release create "$tag" -R "$repo" --title "Web build (C# AOT template)" \
-	--notes "godot-enhanced $(git rev-parse --short HEAD) — mono_wasm_aot_dir 전용 템플릿으로 내보낸 웹 빌드 (비교 측정용)"
-gh release upload "$tag" -R "$repo" "$w/yangvil-web-aot.zip" --clobber
+# 네트워크(TLS) 일시 오류 재시도
+retry() { for try in 1 2 3 4 5; do "$@" && return 0; echo "  재시도 $try"; sleep 5; done; return 1; }
+gh release view "$tag" -R "$repo" >/dev/null 2>&1 || retry gh release create "$tag" -R "$repo" --title "Web build (C# AOT template)" \
+	--notes "godot-enhanced $(git rev-parse --short HEAD) — mono_wasm_aot_dir 전용 템플릿으로 내보낸 웹 빌드 (비교 측정용)" || true
+retry gh release upload "$tag" -R "$repo" "$w/yangvil-web-aot.zip" --clobber
 echo "✔ dotnet-web-aot 완료 — $repo@$tag/yangvil-web-aot.zip"
