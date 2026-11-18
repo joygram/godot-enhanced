@@ -2,6 +2,31 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🚀 0.3.0 — GDScript prebuild ships everywhere, all web on Emscripten 7.0.0 (C# too)
+
+| 0.3.0 release | Contents | Status |
+|---|---|---|
+| `editor-4.7.2-0.3.0` | editors ×6 + export_templates.tpz | ✔ 5 runners verified |
+| `web-template-4.7.2-0.3.0` | threads / nothreads × static / dlink | ✔ Emscripten 7.0.0 |
+| `dotnet-web-4.7.2-0.3.0` | C# kits Linux · macOS · Windows | ✔ Emscripten 7.0.0 |
+
+**GDScript prebuild in every release** (`script_export_mode=3`)
+- Editor + templates from the same release → prebuilt bytecode loads, no parse · analyze · compile
+- Template folder `4.7.2.stable.enhanced-0.3.0` keeps editor and templates paired
+
+**C# web on Emscripten 7.0.0**
+
+| C# web template link | 6.0.2 pin | **0.3.0 (7.0.0)** |
+|---|---|---|
+| release / debug × threads / nothreads | needed old toolchain | **✔ 4 of 4 linked** |
+
+- Error: `undefined symbol: _Unwind_CallPersonality` (`libmono-wasm-eh-wasm.a`)
+- Cause: .NET 11 runtime pack prebuilt by Emscripten 6; LLVM 23 renamed it `__gxx_wasm_personality_v0`
+- Fix: old name forwards to the new one ([gd_mono_wasm_unwind.cpp](modules/mono/mono_gd/gd_mono_wasm_unwind.cpp))
+
+**Cleanup**
+- Removed broken releases `web-template-4.7.2-0.1.9`, `0.2.0` (threads + dlink crash at startup)
+
 ## 🔧 0.2.1 — Fix: Emscripten 7.0.0 (latest), web threads + GDExtension work again
 
 - Fix, not a new feature: stock Godot already supports web threads + GDExtension
@@ -17,7 +42,6 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Error: `setting 'sig'`, then GL `LinkError`
 - Cause: 6.0.2 bound GL aliases to wasm exports before instantiation
 - GDExtension web builds: rebuild with 7.0.0 (6.0.2 side modules → `resolved is not a function`)
-- C# `.mono` web templates: same 7.0.0; .NET 11 pack's `_Unwind_CallPersonality` restored for LLVM 23 libunwind
 
 ## ⚡ 0.2.0 — GDScript prebuild, export templates locked to the release
 
@@ -209,6 +233,8 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 - Godot web export threads crash fix, Godot web threads dlink startup error
 - "Cannot set properties of undefined (setting 'sig')", "function import requires a callable" Godot
 - Godot Emscripten 7, Godot Emscripten 7.0.0 web template, GDExtension rebuild Emscripten 7
+- GDScript prebuild, GDScript precompile export, Godot compiled GDScript bytecode, script_export_mode
+- Godot C# web Emscripten 7, "undefined symbol: _Unwind_CallPersonality", __gxx_wasm_personality_v0
 - Godot web game itch.io Poki CrazyGames, Godot AdSense web, Godot Safari iOS web
 - Godot ARM64 Windows Linux, Apple Silicon Godot
 - Godot web export size, Godot web build too large, Godot HTML5 gzip brotli compression, itch.io Godot loading slow
@@ -306,6 +332,31 @@ git cherry-pick 4.7.2-stable..origin/main
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
 
+### 🚀 0.3.0 — GDScript 사전 빌드 전 릴리스 탑재, 웹 전부 Emscripten 7.0.0 (C# 포함)
+
+| 0.3.0 릴리스 | 내용 | 상태 |
+|---|---|---|
+| `editor-4.7.2-0.3.0` | 편집기 6종 + export_templates.tpz | ✔ 러너 5종 검증 |
+| `web-template-4.7.2-0.3.0` | 스레드·스레드 없음 × 정적·dlink | ✔ Emscripten 7.0.0 |
+| `dotnet-web-4.7.2-0.3.0` | C# 키트 Linux·macOS·Windows | ✔ Emscripten 7.0.0 |
+
+**GDScript 사전 빌드 전 릴리스 탑재** (`script_export_mode=3`)
+- 같은 릴리스 편집기·템플릿 → 사전 빌드 바이트코드 적용, 파싱·분석·컴파일 생략
+- 템플릿 폴더 `4.7.2.stable.enhanced-0.3.0` 으로 편집기·템플릿 짝 고정
+
+**C# 웹 Emscripten 7.0.0**
+
+| C# 웹 템플릿 링크 | 6.0.2 고정 | **0.3.0 (7.0.0)** |
+|---|---|---|
+| release·debug × 스레드·스레드 없음 | 구 툴체인 필요 | **✔ 4종 모두 링크** |
+
+- 오류: `undefined symbol: _Unwind_CallPersonality` (`libmono-wasm-eh-wasm.a`)
+- 원인: .NET 11 런타임 팩 = Emscripten 6 컴파일, LLVM 23 이 이름을 `__gxx_wasm_personality_v0` 로 바꿈
+- 수정: 옛 이름 → 새 함수로 넘김 ([gd_mono_wasm_unwind.cpp](modules/mono/mono_gd/gd_mono_wasm_unwind.cpp))
+
+**정리**
+- 결함 릴리스 폐기: `web-template-4.7.2-0.1.9`, `0.2.0` (멀티스레드 + dlink 시작 오류)
+
 ### 🔧 0.2.1 — 수정: Emscripten 7.0.0(최신) 지원, 웹 멀티스레드 + GDExtension 다시 동작
 
 - 새 기능 아님: 공식 Godot 도 웹 멀티스레드 + GDExtension 지원
@@ -322,7 +373,6 @@ Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커�
 - 원인: 6.0.2 가 GL 별칭을 인스턴스 전에 wasm export 로 묶음
 - GDExtension 웹 빌드: 7.0.0 으로 재빌드 필요 (6.0.2 모듈 → `resolved is not a function`)
 - 서버: 멀티스레드 = COOP·COEP 헤더 필요 (SharedArrayBuffer)
-- C# `.mono` 웹 템플릿: 같은 7.0.0, .NET 11 팩이 부르는 `_Unwind_CallPersonality` 를 LLVM 23 libunwind 위에 복원
 
 ### ⚡ 0.2.0 — GDScript 사전 빌드, 내보내기 템플릿을 릴리스에 고정
 
@@ -569,6 +619,8 @@ git cherry-pick 4.7.2-stable..origin/main
 - 고도 SQLite 웹, GDExtension 웹 빌드, 고도 웹게임 광고 애드센스, 고도 사파리 아이폰 웹
 - 고도 웹 멀티스레드 오류 해결, 고도 웹 시작 오류, 고도 웹 스레드 dlink 오류
 - 고도 Emscripten 7, 고도 Emscripten 7.0.0 웹 템플릿, GDExtension Emscripten 7 재빌드
+- 고도 GDScript 사전 빌드, 고도 스크립트 미리 컴파일, GDScript 바이트코드 내보내기
+- 고도 C# 웹 Emscripten 7, 고도 C# 웹 링크 오류 _Unwind_CallPersonality
 - 고도 ARM64, 애플 실리콘 고도
 - 고도 엔진 한글 입력, Godot 한글 IME, 한글 입력 시 커서 안 움직임, 한글 씹힘, LineEdit·TextEdit 한글
 
