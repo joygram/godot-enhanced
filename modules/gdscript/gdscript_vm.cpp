@@ -813,7 +813,8 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 		OPCODE_SWITCH(_code_ptr[ip]) {
 #endif // GD_AOT_CALL
 			OPCODE(OPCODE_OPERATOR) {
-				constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*_code_ptr);
+				constexpr int _pointer_size = GDScriptFunction::OPERATOR_CACHE_SLOTS;
+				static_assert(sizeof(Variant::ValidatedOperatorEvaluator) <= _pointer_size * sizeof(*_code_ptr));
 				CHECK_SPACE(7 + _pointer_size);
 
 				bool valid;

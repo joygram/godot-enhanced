@@ -46,7 +46,7 @@ class GDScriptPrebuild {
 	struct Applier;
 
 public:
-	static constexpr uint32_t FORMAT_VERSION = 1;
+	static constexpr uint32_t FORMAT_VERSION = 2; // 2 = 연산 캐시 칸 고정 2칸(플랫폼 무관 명령 길이)
 
 	// Editor: serialize a fully compiled script. Empty result + r_error when it cannot be stored.
 	static Vector<uint8_t> save(const GDScript *p_script, String &r_error);

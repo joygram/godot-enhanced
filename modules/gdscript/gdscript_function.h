@@ -149,6 +149,10 @@ public:
 
 class GDScriptFunction {
 public:
+	// OPCODE_OPERATOR 연산 캐시 칸 = 플랫폼 무관 고정 2칸(int). 포인터 크기로 정하면 64비트에서 만든 사전 빌드를
+	// wasm32 가 다른 명령 길이로 읽어 연산자 번호·정렬이 깨진다(Index p_op out of bounds, unaligned accesses).
+	static constexpr int OPERATOR_CACHE_SLOTS = 2;
+
 	enum Opcode {
 		OPCODE_OPERATOR,
 		OPCODE_OPERATOR_VALIDATED,

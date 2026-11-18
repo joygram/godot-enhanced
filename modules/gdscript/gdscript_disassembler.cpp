@@ -118,7 +118,7 @@ void GDScriptFunction::disassemble(const Vector<String> &p_code_lines, Vector<in
 
 		switch (opcode) {
 			case OPCODE_OPERATOR: {
-				constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*_code_ptr);
+				constexpr int _pointer_size = OPERATOR_CACHE_SLOTS;
 				int operation = _code_ptr[ip + 4];
 
 				text += "operator ";

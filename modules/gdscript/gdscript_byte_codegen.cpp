@@ -580,8 +580,7 @@ void GDScriptByteCodeGenerator::write_unary_operator(const Address &p_target, Va
 	append(p_operator);
 	append(0); // Signature storage.
 	append(0); // Return type storage.
-	constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*(opcodes.ptr()));
-	for (int i = 0; i < _pointer_size; i++) {
+	for (int i = 0; i < GDScriptFunction::OPERATOR_CACHE_SLOTS; i++) {
 		append(0); // Space for function pointer.
 	}
 }
@@ -637,8 +636,7 @@ void GDScriptByteCodeGenerator::write_binary_operator(const Address &p_target, V
 	append(p_operator);
 	append(0); // Signature storage.
 	append(0); // Return type storage.
-	constexpr int _pointer_size = sizeof(Variant::ValidatedOperatorEvaluator) / sizeof(*(opcodes.ptr()));
-	for (int i = 0; i < _pointer_size; i++) {
+	for (int i = 0; i < GDScriptFunction::OPERATOR_CACHE_SLOTS; i++) {
 		append(0); // Space for function pointer.
 	}
 }

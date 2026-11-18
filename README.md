@@ -30,6 +30,16 @@ Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enh
 | Time to first screen | to be measured | to be measured |
 | Heap memory | to be measured | to be measured |
 
+## 🔧 0.3.1 — Fix: GDScript prebuild crashed on web (bytecode made on 64-bit, run on wasm32)
+
+| Prebuild (`script_export_mode=3`) on web | 0.3.0 | **0.3.1** |
+|---|---|---|
+| Boot | crash | **✔** |
+
+- Error: `Index p_op = 156 is out of bounds (Variant::OP_MAX = 25)`, `RuntimeError: operation does not support unaligned accesses`
+- Cause: `OPCODE_OPERATOR` cache size followed pointer size (2 slots on 64-bit editor, 1 on wasm32) → instruction length mismatch
+- Fix: cache fixed at 2 slots on every platform (`GDScriptFunction::OPERATOR_CACHE_SLOTS`), prebuild format 2 (old prebuilds fall back to tokens)
+
 ## 🚀 0.3.0 — GDScript prebuild ships everywhere, all web on Emscripten 7.0.0 (C# too)
 
 | 0.3.0 release | Contents | Status |
@@ -359,6 +369,16 @@ git cherry-pick 4.7.2-stable..origin/main
 ## 한국어 안내
 
 Godot 4.7.2 공식 소스에 패치를 더한 빌드입니다. 업스트림 커밋 이력은 그대로 유지합니다.
+
+### 🔧 0.3.1 — 수정: 웹 GDScript 사전 빌드 시작 오류 (64비트에서 만든 바이트코드를 wasm32 가 읽음)
+
+| 웹 사전 빌드 (`script_export_mode=3`) | 0.3.0 | **0.3.1** |
+|---|---|---|
+| 시작 | 오류로 멈춤 | **✔** |
+
+- 오류: `Index p_op = 156 is out of bounds (Variant::OP_MAX = 25)`, `RuntimeError: operation does not support unaligned accesses`
+- 원인: `OPCODE_OPERATOR` 캐시 칸 = 포인터 크기 (64비트 편집기 2칸, wasm32 1칸) → 명령 길이 어긋남
+- 수정: 캐시 칸 전 플랫폼 2칸 고정 (`GDScriptFunction::OPERATOR_CACHE_SLOTS`), 사전 빌드 포맷 2 (옛 사전 빌드는 토큰으로 대체)
 
 ### 🚀 0.3.0 — GDScript 사전 빌드 전 릴리스 탑재, 웹 전부 Emscripten 7.0.0 (C# 포함)
 
