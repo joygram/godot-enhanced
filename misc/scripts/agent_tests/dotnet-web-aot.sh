@@ -43,8 +43,12 @@ echo "── 1차 내보내기 (AOT publish 출력 만들기, 표준 템플릿 $
 if [ ! -f "$tdir/web_release.zip" ]; then
 	ever="$($py -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}')")-$(tr -d '[:space:]' < ENHANCED_VERSION)"
 	erepo="$(git remote get-url origin | sed -E 's#(\.git)?$##; s#.*github\.com[:/]##')"
-	gh release download "dotnet-web-$ever" -R "$erepo" -p godot.web.template_release.wasm32.mono.zip -D "$w" --clobber \
-		|| { echo "✘ 표준 C# 웹 템플릿 없음 (dotnet-web-$ever)"; exit 1; }
+	# 1차 내보내기 = AOT publish 출력만 씀 (결과 버림) → 이 버전 릴리스 없으면 최신 dotnet-web 릴리스 템플릿
+	rel="dotnet-web-$ever"
+	gh release view "$rel" -R "$erepo" >/dev/null 2>&1 || rel=$(gh release list -R "$erepo" -L 50 --json tagName -q '[.[].tagName | select(startswith("dotnet-web-"))][0]')
+	echo "표준 템플릿: $rel"
+	gh release download "$rel" -R "$erepo" -p godot.web.template_release.wasm32.mono.zip -D "$w" --clobber \
+		|| { echo "✘ 표준 C# 웹 템플릿 없음 ($rel)"; exit 1; }
 	mv "$w/godot.web.template_release.wasm32.mono.zip" "$tdir/web_release.zip"
 fi
 "$exe" --headless --path "$p" --import >"$w/import.log" 2>&1 || true
