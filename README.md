@@ -2,6 +2,34 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## 🐱 Showcase — a Unity game moved to godot-enhanced C#, almost untouched
+
+Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enhanced C# (.NET 11).
+
+- Unity: [joygram/YangVil](https://github.com/joygram/YangVil) · play: https://yangvil.deuklab.workers.dev
+- **godot-enhanced C#**: [joygram/yangvil-godot-csharp](https://github.com/joygram/yangvil-godot-csharp) · play: coming soon
+
+| Part | Unity | **godot-enhanced C#** |
+|---|---|---|
+| Game rules (Core, 4 files) | 702 lines | 704 lines — only save JSON swapped |
+| Screens + effects (UI) | 2,648 lines | **1,983 lines (−25%)** |
+| Art + data tables | 28 images + 26 tables | same files, unchanged |
+| Runtime | Unity Mono / IL2CPP | **.NET 11 (`net11.0`), latest C#** |
+
+**What you get**
+- Same C# game code: rules copied as-is, UI mapped 1:1 to Godot nodes
+- Less code: Godot `Node2D` · `Tween` · `_Draw` · `modulate` replace Unity-side shims
+- .NET 11 + standard `System.Text.Json` · `async/await` · LINQ, no engine-pinned runtime
+- C# web export that stock Godot 4 lacks, trimmed by default
+
+**Performance** — measured side by side, same game and assets
+
+| Web build | Unity WebGL | **godot-enhanced C#** |
+|---|---|---|
+| Download size | to be measured | to be measured |
+| Time to first screen | to be measured | to be measured |
+| Heap memory | to be measured | to be measured |
+
 ## 🚀 0.3.0 — GDScript prebuild ships everywhere, all web on Emscripten 7.0.0 (C# too)
 
 | 0.3.0 release | Contents | Status |
