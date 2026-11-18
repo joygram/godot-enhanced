@@ -47,9 +47,11 @@ if [ ! -f "$tdir/web_release.zip" ]; then
 	rel="dotnet-web-$ever"
 	gh release view "$rel" -R "$erepo" >/dev/null 2>&1 || rel=$(gh release list -R "$erepo" -L 50 --json tagName -q '[.[].tagName | select(startswith("dotnet-web-"))][0]')
 	echo "표준 템플릿: $rel"
-	gh release download "$rel" -R "$erepo" -p godot.web.template_release.wasm32.mono.zip -D "$w" --clobber \
-		|| { echo "✘ 표준 C# 웹 템플릿 없음 ($rel)"; exit 1; }
-	mv "$w/godot.web.template_release.wasm32.mono.zip" "$tdir/web_release.zip"
+	# 템플릿 = 키트 zip 안 web_release.zip
+	gh release download "$rel" -R "$erepo" -p "*.dotnet-web.linux-$arch.zip" -D "$w/kit" --clobber \
+		|| { echo "✘ C# 키트 없음 ($rel)"; exit 1; }
+	unzip -q -j "$w"/kit/*.zip '*/web_release.zip' -d "$w/kit" || { echo "✘ 키트에 web_release.zip 없음"; exit 1; }
+	mv "$w/kit/web_release.zip" "$tdir/web_release.zip"
 fi
 "$exe" --headless --path "$p" --import >"$w/import.log" 2>&1 || true
 RunAOTCompilation=true timeout 1500 "$exe" --headless --path "$p" --export-release Web "$w/out-std/index.html" >"$w/export-std.log" 2>&1 || true
