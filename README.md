@@ -36,7 +36,8 @@ Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enh
 | Memory (Chrome total) | **639 MB** | 764 MB |
 
 - Known issue: C# web startup (54 MB wasm compile + .NET start) slower than Unity
-- AOT checked: `RunAOTCompilation=true` runs .NET AOT, but exported `index.wasm` is byte-identical → AOT output not linked yet
+- Numbers above = stock template (interpreter)
+- AOT = game-specific template via `mono_wasm_aot_dir=` ([patches/dotnet-web-export.md](patches/dotnet-web-export.md)), to be measured
 - Reproduce: `node scripts/web/compare.mjs 3` in yangvil-godot-csharp
 
 ## 🔧 0.3.1 — Fix: GDScript prebuild crashed on web (bytecode made on 64-bit, run on wasm32)
