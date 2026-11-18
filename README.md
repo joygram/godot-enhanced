@@ -7,28 +7,37 @@ Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-sta
 Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enhanced C# (.NET 11).
 
 - Unity: [joygram/YangVil](https://github.com/joygram/YangVil) · play: https://yangvil.deuklab.workers.dev
-- **godot-enhanced C#**: [joygram/yangvil-godot-csharp](https://github.com/joygram/yangvil-godot-csharp) · play: coming soon
+- **godot-enhanced C#**: [joygram/yangvil-godot-csharp](https://github.com/joygram/yangvil-godot-csharp) · play: https://yangvil-godot-csharp.deuklab.workers.dev
+- Web build of the Godot version = built with godot-enhanced `dotnet-web-4.7.2-0.3.0`
 
-| Part | Unity | **godot-enhanced C#** |
+**1. Easy Unity migration**
+- Game rules C#: copied as-is (9 of 702 lines changed, save JSON only)
+- Art + data tables: same 28 images + 26 tables, unchanged
+- UI: engine API mapped 1:1 to Godot nodes, **−25% code**
+
+**2. No license burden**
+- Engine = Godot (MIT) + godot-enhanced patches: no runtime fee, royalty or seat cost
+- Game code = MIT, full engine source open
+
+**3. Easy C# web deploy**
+- C# web export that stock Godot 4 lacks
+- One command: latest engine → web build → compress → Cloudflare deploy
+- **−44% download** vs Unity (12.2 MB vs 21.8 MB)
+- .NET 11, latest C# and standard library
+
+**Measured side by side** (same PC, headless Chrome, no cache)
+
+| Web build | Unity WebGL | godot-enhanced C# |
 |---|---|---|
-| Game rules (Core, 4 files) | 702 lines | 704 lines — only save JSON swapped |
-| Screens + effects (UI) | 2,648 lines | **1,983 lines (−25%)** |
-| Art + data tables | 28 images + 26 tables | same files, unchanged |
-| Runtime | Unity Mono / IL2CPP | **.NET 11 (`net11.0`), latest C#** |
+| Transfer size | 21.8 MB | **12.2 MB (−44%)** |
+| Download done | 1.4–2.0 s | **0.7–1.2 s** |
+| First screen | **1.7–2.4 s** | 3.6–3.9 s |
+| Init after download | **~0.3 s** | ~2.7 s |
+| Memory (Chrome total) | **639 MB** | 764 MB |
 
-**What you get**
-- Same C# game code: rules copied as-is, UI mapped 1:1 to Godot nodes
-- Less code: Godot `Node2D` · `Tween` · `_Draw` · `modulate` replace Unity-side shims
-- .NET 11 + standard `System.Text.Json` · `async/await` · LINQ, no engine-pinned runtime
-- C# web export that stock Godot 4 lacks, trimmed by default
-
-**Performance** — measured side by side, same game and assets
-
-| Web build | Unity WebGL | **godot-enhanced C#** |
-|---|---|---|
-| Download size | to be measured | to be measured |
-| Time to first screen | to be measured | to be measured |
-| Heap memory | to be measured | to be measured |
+- Known issue: C# web startup (54 MB wasm compile + .NET start) slower than Unity
+- AOT checked: `RunAOTCompilation=true` runs .NET AOT, but exported `index.wasm` is byte-identical → AOT output not linked yet
+- Reproduce: `node scripts/web/compare.mjs 3` in yangvil-godot-csharp
 
 ## 🔧 0.3.1 — Fix: GDScript prebuild crashed on web (bytecode made on 64-bit, run on wasm32)
 
