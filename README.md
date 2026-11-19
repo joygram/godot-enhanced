@@ -37,6 +37,18 @@ Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enh
 - AOT gives no startup gain: startup = wasm compile + engine init; AOT helps C# run time
 - Reproduce: `node scripts/web/compare.mjs 3` in yangvil-godot-csharp
 
+## 🗄️ 0.3.2 — SQLite built into the web template (no dlink side module)
+
+| rpg2d web (threads) | 0.3.1 dlink | **0.3.2 static** |
+|---|---|---|
+| Engine wasm files | `index.wasm` + `index.side.wasm` 42 MB + `libgdsqlite` | **`index.wasm` only** |
+| `variant/extensions_support` | on | **off** |
+
+- New module `modules/sqlite` = [godot-sqlite](https://github.com/2shady4u/godot-sqlite) linked into the engine, same `SQLite` class and API
+- Off by default; web static templates (`web_release.zip`, `web_nothreads_release.zip`) build with `module_sqlite_enabled=yes`
+- dlink templates and editors unchanged (keep using the godot-sqlite GDExtension)
+- Why: iOS Safari stalled at boot loading the dlink side module
+
 ## 🔧 0.3.1 — Fix: GDScript prebuild crashed on web (bytecode made on 64-bit, run on wasm32)
 
 | Prebuild (`script_export_mode=3`) on web | 0.3.0 | **0.3.1** |
