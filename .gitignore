@@ -396,3 +396,6 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+
+# 머신별 워크스페이스 식별자 (deuk-agent-flow) — 공유하면 PC 간 충돌
+.deuk-workspace-id

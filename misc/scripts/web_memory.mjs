@@ -9,14 +9,16 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, extname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
-const web = resolve(process.argv[2] ?? ".");
+// 인자가 http(s) 주소면 배포된 사이트를 그대로 측정 (Chrome 만: 훅은 DevTools 로 주입)
+const remote = /^https?:\/\//.test(process.argv[2] ?? "") ? process.argv[2] : null;
+const web = remote ? null : resolve(process.argv[2] ?? ".");
 const seconds = Number(process.argv[3] ?? 30);
-const outJson = resolve(process.argv[4] ?? join(web, "web-memory.json"));
+const outJson = resolve(process.argv[4] ?? (remote ? "web-memory.json" : join(web, "web-memory.json")));
 const port = Number(process.env.WEB_MEMORY_PORT ?? 8798);
-const browserName = process.env.BROWSER || (process.platform === "darwin" ? "safari" : "chrome");
+const browserName = process.env.BROWSER || (remote ? "chrome" : process.platform === "darwin" ? "safari" : "chrome");
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const MB = (b) => Math.round(b / 1048576 * 10) / 10;
-if (!existsSync(join(web, "index.html"))) { console.error(`✘ ${web}/index.html 없음`); process.exit(1); }
+if (!remote && !existsSync(join(web, "index.html"))) { console.error(`✘ ${web}/index.html 없음`); process.exit(1); }
 
 // 페이지에 넣는 측정 훅: WebAssembly.Memory 수집 + 콘솔·오류 기록 (모든 브라우저 공통)
 const HOOK = `<script>(()=>{if(globalThis.__mems)return;const M=WebAssembly.Memory;globalThis.__mems=[];
@@ -27,7 +29,7 @@ const I=WebAssembly.Instance;WebAssembly.Instance=function(m,imp){return grab(ne
 const L=globalThis.__logs=[];for(const k of["log","warn","error"]){const o=console[k].bind(console);console[k]=(...a)=>{L.push(a.map(x=>x&&x.stack?x.stack:x).join(" "));o(...a)}}
 addEventListener("error",e=>L.push("EXC "+(e.message||e.error)+" "+String(e.error&&e.error.stack||"").slice(0,1500)));addEventListener("unhandledrejection",e=>L.push("EXC "+e.reason+" "+String(e.reason&&e.reason.stack||"").slice(0,1500)));})();</script>`;
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm" };
-const server = createServer((req, res) => {
+const server = remote ? { close() {} } : createServer((req, res) => {
 	const file = join(web, decodeURIComponent(new URL(req.url, "http://x").pathname));
 	if (!file.startsWith(web) || !existsSync(file)) { res.writeHead(404).end(); return; }
 	let body = readFileSync(file);
@@ -36,7 +38,7 @@ const server = createServer((req, res) => {
 		"Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "require-corp" });
 	res.end(body);
 }).listen(port);
-const page = `http://127.0.0.1:${port}/index.html`;
+const page = remote ?? `http://127.0.0.1:${port}/index.html`;
 const probe = "return {wasm: Math.max(0,...(globalThis.__mems||[]).map(m=>m.buffer.byteLength)), js: performance.memory ? performance.memory.usedJSHeapSize : 0, logs: globalThis.__logs||[]}";
 
 let driver; // { sample(), shot(), close() }
@@ -86,6 +88,8 @@ if (browserName === "safari") {
 	ws.addEventListener("message", (m) => { const d = JSON.parse(m.data); if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); } });
 	const call = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 	await call("Page.enable");
+	// 배포 사이트: index.html 을 못 고치므로 같은 훅을 문서 시작 전에 주입
+	if (remote) await call("Page.addScriptToEvaluateOnNewDocument", { source: HOOK.replace(/^<script>|<\/script>$/g, "") });
 	await call("Page.navigate", { url: page });
 	driver = {
 		sample: async () => (await call("Runtime.evaluate", { returnByValue: true, expression: `(()=>{${probe}})()` })).result?.result?.value ?? {},
