@@ -367,7 +367,8 @@ def configure(env: "SConsEnvironment"):
         "HEAPF32",
         "HEAPF64",
     ]
-    env["EXPORTED_RUNTIME_METHODS"] += ["callMain", "cwrap"] + heap_arrays
+    # FS·GL: 정적(non-dlink) 빌드는 MAIN_MODULE 전체 내보내기가 없어 Module.FS·GL 이 빈다 — 지연 마운트 로더(rpg2d chunk-loader)가 쓴다.
+    env["EXPORTED_RUNTIME_METHODS"] += ["callMain", "cwrap", "FS", "GL"] + heap_arrays
     env["EXPORTED_FUNCTIONS"] += ["_malloc", "_free"]
 
     # Add code that allow exiting runtime.

@@ -37,6 +37,11 @@ Same game, two engines. YangVil (cat-raising RPG) ported from Unity to godot-enh
 - AOT gives no startup gain: startup = wasm compile + engine init; AOT helps C# run time
 - Reproduce: `node scripts/web/compare.mjs 3` in yangvil-godot-csharp
 
+## 🔧 0.3.3 — Fix: static web templates expose `Module.FS` and `Module.GL`
+
+- 0.3.2 static templates: `Module.FS` undefined → custom loaders mounting lazy files crash (`Cannot read properties of undefined (reading 'cwd')`)
+- dlink builds exported them through `MAIN_MODULE`; static builds now list `FS`, `GL` in `EXPORTED_RUNTIME_METHODS`
+
 ## 🗄️ 0.3.2 — SQLite built into the web template (no dlink side module)
 
 | rpg2d web (threads) | 0.3.1 dlink | **0.3.2 static** |
