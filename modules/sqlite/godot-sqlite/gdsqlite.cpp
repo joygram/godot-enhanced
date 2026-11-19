@@ -548,7 +548,8 @@ bool SQLite::create_table(const String &p_name, const Dictionary &p_table_dict) 
 		if (foreign_keys) {
 			if (column_dict.get("foreign_key", false)) {
 				const String foreign_key_definition = (const String &)(column_dict["foreign_key"]);
-				const Array foreign_key_elements = foreign_key_definition.split(".");
+				// godot-enhanced: 엔진 split 은 Vector<String> — Array 암시 변환 없음
+				const PackedStringArray foreign_key_elements = foreign_key_definition.split(".");
 				if (foreign_key_elements.size() == 2) {
 					const String column_name = (const String &)(columns[i]);
 					const String foreign_key_table_name = (const String &)(foreign_key_elements[0]);

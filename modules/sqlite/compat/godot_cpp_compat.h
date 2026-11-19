@@ -17,7 +17,7 @@
 
 namespace godot {
 
-using Marshalls = core_bind::Marshalls;
+using Marshalls = CoreBind::Marshalls;
 
 struct UtilityFunctions {
 	template <typename... Args>
