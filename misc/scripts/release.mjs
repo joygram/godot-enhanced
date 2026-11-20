@@ -79,7 +79,7 @@ if (kind === "editor") {
 // 업로드 (릴리스 없으면 생성). 조회 실패가 네트워크 탓일 수 있어 3번 확인
 const viewOk = () => spawnSync("gh", ["release", "view", tag, "--repo", REPO], { cwd: root, stdio: "ignore" }).status === 0;
 const exists = viewOk() || viewOk() || viewOk();
-if (!exists) run("gh", ["release", "create", tag, "--repo", REPO, "--target", sha, "--title", `${kind} ${version} (godot-enhanced)`, "--notes", `godot-enhanced ${version} — ${kind}. Built ${via === "local" ? "locally" : `on ${via}`} from ${sha.slice(0, 10)}.`]);
+if (!exists) run("gh", ["release", "create", tag, "--repo", REPO, "--target", sha, "--title", `${kind} ${version} (godot-enhanced)`, "--notes", `godot-enhanced ${version} — ${kind}. Built ${via === "local" ? "locally" : "on a build agent"} from ${sha.slice(0, 10)}.`]);
 // 릴리스 자산 = 템플릿 zip·편집기 묶음만 (빌드 중간 산출물 wasm·js 는 올리지 않음)
 run("gh", ["release", "upload", tag, "--repo", REPO, ...files.filter((f) => !/\.(wasm|js)$/.test(f)), "--clobber"]);
 console.log(`[release] ✔ ${tag} ← ${files.length}개 (${via})\n  ${files.map((f) => f.slice(root.length + 1)).join("\n  ")}`);

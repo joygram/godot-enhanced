@@ -3,8 +3,9 @@
 // 사용: node misc/scripts/remote_build.mjs <host> <scons 인자...>
 //       node misc/scripts/remote_build.mjs <host> --resume <job>   (연결이 끊긴 빌드의 결과 받기)
 //   예) node misc/scripts/remote_build.mjs mac platform=macos target=editor arch=arm64
-// 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"}, 없으면 BUILD_AGENT_TOKEN. 포트: BUILD_AGENT_PORT (기본 8790)
-// 산출물: bin/remote/<host>/
+// 에이전트: ~/.config/godot-enhanced/agents.json (저장소 밖, 커밋 금지 — 내부망 주소는 여기에만)
+//   {"<별칭>": {"host": "<주소>", "token": "<토큰>"}} 또는 {"<host>": "<토큰>"}. 없으면 BUILD_AGENT_TOKEN. 포트: BUILD_AGENT_PORT (기본 8790)
+// 산출물: bin/remote/<별칭>/
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -16,13 +17,15 @@ const [host, ...rest] = process.argv.slice(2);
 // 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"} → 없으면 BUILD_AGENT_TOKEN
 const agentsFile = join(homedir(), ".config", "godot-enhanced", "agents.json");
 const agents = existsSync(agentsFile) ? JSON.parse(readFileSync(agentsFile, "utf8")) : {};
-const token = agents[host] || process.env.BUILD_AGENT_TOKEN;
+const entry = agents[host];
+const token = (typeof entry === "object" ? entry?.token : entry) || process.env.BUILD_AGENT_TOKEN;
+const address = (typeof entry === "object" && entry?.host) || host;
 if (!host || rest.length === 0 || !token) {
 	// 예) ... linux platform=linuxbsd target=editor --test smoke-editor --release editor
 	console.error("사용: BUILD_AGENT_TOKEN=<토큰> node misc/scripts/remote_build.mjs <host> <scons 인자...> | --resume <job>");
 	process.exit(2);
 }
-const base = `http://${host}:${process.env.BUILD_AGENT_PORT || 8790}`;
+const base = `http://${address}:${process.env.BUILD_AGENT_PORT || 8790}`;
 const auth = { Authorization: `Bearer ${token}` };
 const git = (...args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
