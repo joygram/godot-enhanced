@@ -1,0 +1,18 @@
+{
+  "name": "godot-enhanced",
+  "private": true,
+  "description": "Build godot-enhanced from source: npm run setup && npm run build (see BUILDING.md)",
+  "scripts": {
+    "doctor": "node misc/scripts/dev.mjs doctor editor",
+    "doctor:web": "node misc/scripts/dev.mjs doctor web",
+    "doctor:csharp": "node misc/scripts/dev.mjs doctor csharp",
+    "setup": "node misc/scripts/dev.mjs setup editor",
+    "setup:web": "node misc/scripts/dev.mjs setup web",
+    "setup:csharp": "node misc/scripts/dev.mjs setup csharp",
+    "build": "node misc/scripts/dev.mjs build editor",
+    "build:web": "node misc/scripts/dev.mjs build web",
+    "build:csharp": "node misc/scripts/dev.mjs build csharp",
+    "release": "node misc/scripts/release_all.mjs",
+    "release:check": "node misc/scripts/release_all.mjs --check"
+  }
+}

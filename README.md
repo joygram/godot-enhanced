@@ -41,8 +41,11 @@ curl -fsSL https://raw.githubusercontent.com/joygram/godot-enhanced/main/install
 | Linux | x86_64, arm64 | x86_64 |
 | macOS | universal | arm64 |
 
+Build from source instead: `npm run build` (checks and installs the toolchain) → [BUILDING.md](BUILDING.md)
+
 🇰🇷 설치·업데이트
 - 위 명령 한 줄. GDScript = 기본, C# = `csharp`
+- 소스 빌드 = `npm run build` → [BUILDING.md](BUILDING.md)
 - 다시 실행 = 최신으로 업데이트 (받은 릴리스는 건너뜀)
 - 실행 = `godot-enhanced`
 
