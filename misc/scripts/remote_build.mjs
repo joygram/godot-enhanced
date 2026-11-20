@@ -14,12 +14,19 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const [host, ...rest] = process.argv.slice(2);
-// 토큰: ~/.config/godot-enhanced/agents.json {"<host>": "<토큰>"} → 없으면 BUILD_AGENT_TOKEN
+// 에이전트 설정 (내부망 정보 = 커밋 금지): 저장소 .env → 환경 변수 → ~/.config/godot-enhanced/agents.json
+//   BUILD_AGENT_<별칭>_HOST=<주소>, BUILD_AGENT_<별칭>_TOKEN=<토큰>, BUILD_AGENT_PORT (예: .env.example)
+const envFile = join(root, ".env");
+if (existsSync(envFile)) for (const line of readFileSync(envFile, "utf8").split(/\r?\n/)) {
+	const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+	if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, "$2");
+}
+const key = host?.toUpperCase().replace(/[^A-Z0-9]/g, "_");
 const agentsFile = join(homedir(), ".config", "godot-enhanced", "agents.json");
 const agents = existsSync(agentsFile) ? JSON.parse(readFileSync(agentsFile, "utf8")) : {};
 const entry = agents[host];
-const token = (typeof entry === "object" ? entry?.token : entry) || process.env.BUILD_AGENT_TOKEN;
-const address = (typeof entry === "object" && entry?.host) || host;
+const token = process.env[`BUILD_AGENT_${key}_TOKEN`] || (typeof entry === "object" ? entry?.token : entry) || process.env.BUILD_AGENT_TOKEN;
+const address = process.env[`BUILD_AGENT_${key}_HOST`] || (typeof entry === "object" && entry?.host) || host;
 if (!host || rest.length === 0 || !token) {
 	// 예) ... linux platform=linuxbsd target=editor --test smoke-editor --release editor
 	console.error("사용: BUILD_AGENT_TOKEN=<토큰> node misc/scripts/remote_build.mjs <host> <scons 인자...> | --resume <job>");

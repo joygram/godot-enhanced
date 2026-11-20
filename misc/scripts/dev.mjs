@@ -5,9 +5,9 @@
 //   build   setup 후 빌드. editor = 이 PC 용 편집기, web = 웹 템플릿 4종, csharp = C# 편집기 + GodotSharp
 // 수동 단계·원리 = BUILDING.md
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { cpus, homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -133,8 +133,52 @@ const builds = {
 	},
 };
 
+// ── 로컬 설치: 방금 빌드한 편집기·웹 템플릿을 install.sh·install.ps1 와 같은 자리에 (~/.godot-enhanced/local, 명령 godot-enhanced)
+function installLocal(mono) {
+	const exe = editorPath(mono);
+	if (!existsSync(exe)) { say(`✘ 빌드된 편집기 없음: ${exe} → npm run build`); return false; }
+	if (!checkVersion(exe)) return false;
+	const home = process.env.GODOT_ENHANCED_HOME || join(homedir(), ".godot-enhanced");
+	const dir = join(home, "local");
+	rmSync(dir, { recursive: true, force: true });
+	mkdirSync(dir, { recursive: true });
+	const base = basename(exe).replace(/\.exe$/, "");
+	for (const f of readdirSync(join(root, "bin"))) if (f.startsWith(base) && (mono || !f.includes(".mono")) && !/\.(lib|exp|pdb)$/.test(f)) cpSync(join(root, "bin", f), join(dir, f));
+	if (mono && existsSync(join(root, "bin", "GodotSharp"))) cpSync(join(root, "bin", "GodotSharp"), join(dir, "GodotSharp"), { recursive: true });
+	const installed = join(dir, basename(exe));
+	// 명령 godot-enhanced
+	if (WIN) {
+		const bin = join(home, "bin"); mkdirSync(bin, { recursive: true });
+		writeFileSync(join(bin, "godot-enhanced.cmd"), `@"${installed}" %*\r\n`);
+		say(`command: ${join(bin, "godot-enhanced.cmd")} (PATH 에 ${bin} — install.ps1 이 한 번 추가)`);
+	} else {
+		const bin = process.env.GODOT_ENHANCED_BIN || join(homedir(), ".local", "bin"); mkdirSync(bin, { recursive: true });
+		rmSync(join(bin, "godot-enhanced"), { force: true }); symlinkSync(installed, join(bin, "godot-enhanced"));
+		say(`command: ${join(bin, "godot-enhanced")}`);
+	}
+	// 웹 템플릿: 편집기가 찾는 버전 폴더에 릴리스 이름으로
+	const v = sh(installed, ["--headless", "--version"]).stdout.trim().split(/\r?\n/).pop();
+	const data = WIN ? join(process.env.APPDATA, "Godot") : MAC ? join(homedir(), "Library", "Application Support", "Godot")
+		: join(process.env.XDG_DATA_HOME || join(homedir(), ".local", "share"), "godot");
+	const tdir = join(data, "export_templates", v.slice(0, v.lastIndexOf(".")));
+	mkdirSync(tdir, { recursive: true });
+	const names = mono
+		? { "template_release.wasm32.mono.zip": "web_release.zip", "template_release.wasm32.nothreads.mono.zip": "web_nothreads_release.zip",
+			"template_debug.wasm32.mono.zip": "web_debug.zip", "template_debug.wasm32.nothreads.mono.zip": "web_nothreads_debug.zip" }
+		: { "template_release.wasm32.zip": "web_release.zip", "template_release.wasm32.nothreads.zip": "web_nothreads_release.zip",
+			"template_release.wasm32.dlink.zip": "web_dlink_release.zip", "template_release.wasm32.nothreads.dlink.zip": "web_dlink_nothreads_release.zip" };
+	let n = 0;
+	for (const [src, dst] of Object.entries(names)) {
+		const p = join(root, "bin", `godot.web.${src}`);
+		if (existsSync(p)) { cpSync(p, join(tdir, dst)); n++; }
+	}
+	say(`✔ 로컬 설치 ${installed}\n      웹 템플릿 ${n}/${Object.keys(names).length} → ${tdir}${n < 4 ? ` (빠진 것 = npm run build:web${mono ? " (C#: release_all csharp)" : ""})` : ""}`);
+	return true;
+}
+
+if (cmd === "install") process.exit(installLocal(what === "csharp") ? 0 : 1);
 if (!["doctor", "setup", "build"].includes(cmd) || !builds[what]) {
-	console.error("사용: node misc/scripts/dev.mjs <doctor|setup|build> [editor|web|csharp] [scons 인자...]");
+	console.error("사용: node misc/scripts/dev.mjs <doctor|setup|build|install> [editor|web|csharp] [scons 인자...]");
 	process.exit(2);
 }
 if (cmd === "doctor") process.exit(doctor(what, false) ? 0 : 1);

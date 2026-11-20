@@ -1,5 +1,10 @@
 # Godot .gitignore config
 #
+# godot-enhanced: 내부망 설정 (릴리스·원격 빌드), 예시만 커밋
+.env
+.env.*
+!.env.example
+#
 # Aims to encompass the most commonly found files that we don't want committed
 # to Git, such as compilation output, IDE specific files, etc.
 #

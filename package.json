@@ -12,6 +12,9 @@
     "build": "node misc/scripts/dev.mjs build editor",
     "build:web": "node misc/scripts/dev.mjs build web",
     "build:csharp": "node misc/scripts/dev.mjs build csharp",
+    "install:local": "node misc/scripts/dev.mjs install editor",
+    "install:local:csharp": "node misc/scripts/dev.mjs install csharp",
+    "local": "npm run build && npm run build:web && npm run install:local",
     "release": "node misc/scripts/release_all.mjs",
     "release:check": "node misc/scripts/release_all.mjs --check"
   }

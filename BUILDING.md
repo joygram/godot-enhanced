@@ -74,10 +74,49 @@ Linux arm64:
 - `platform/linuxbsd/detect.py`: x86_64 에서 `arch=arm64` → `aarch64-linux-gnu-*` 자동 사용
 - `CC=… CXX=…` 직접 주면 그대로 씀
 
-## 4. 릴리스 (관리자)
+## 4. 엔진 패치 흐름
 
-- `npm run release` = 편집기·웹 템플릿·C# 키트 3종 빌드·업로드 → 자산 확인
-- `npm run release:check` = 빠진 자산만 확인
+1. 소스 수정
+2. `npm run local` = 편집기 빌드 → 웹 템플릿 빌드 → 로컬 설치
+3. `godot-enhanced` 로 실제 프로젝트 확인 (로컬 설치 = `~/.godot-enhanced/local`)
+4. 확인 끝 → `ENHANCED_VERSION` 올림 → 커밋·푸시
+5. `npm run release` → 빠진 자산 빌드·업로드
+6. 사용자 쪽 = install 명령 재실행 → 최신 릴리스
+
+- 편집기만: `npm run build && npm run install:local`
+- C#: `npm run build:csharp && npm run install:local:csharp`
+- 로컬 설치 ↔ 릴리스 설치 = 같은 명령 `godot-enhanced`, 마지막 실행한 쪽이 연결됨
+
+## 5. 릴리스 (관리자)
+
+- `npm run release` = 3종 릴리스에서 빠진 자산만 빌드 → 성공한 것만 업로드 → 전체 확인
+- `npm run release -- editor` (또는 `web`, `csharp`) = 한 종류만
+- `npm run release:check` = 빌드 없이 빠진 자산 확인
 - 세 릴리스 = 같은 `ENHANCED_VERSION` (편집기 ↔ 템플릿 폴더 일치)
-- 원격 빌드 = 빌드 에이전트 별칭 `linux`·`mac`, 주소·토큰 = `~/.config/godot-enhanced/agents.json` (커밋 금지)
-- 에이전트 설치: `misc/scripts/setup_build_agent.sh`
+
+| 릴리스 | 자산 | 빌드 위치 |
+|---|---|---|
+| `editor-<버전>` | Windows·Linux x86_64·arm64, macOS universal | 이 PC, linux, mac |
+| `web-template-<버전>` | 웹 템플릿 4종 | linux |
+| `dotnet-web-<버전>` | C# 웹 템플릿 4종 + 키트 3종 | linux, mac, 이 PC |
+
+### 원격 빌드 설정 (.env)
+
+- 원격 빌드 = 빌드 에이전트(`misc/scripts/build_agent.mjs`)에 HTTP 로 요청, SSH 없음
+- 내부망 주소·토큰 = 저장소 `.env` 에만. 커밋 금지 (`.gitignore`)
+- 시작: `cp .env.example .env` → 값 채움
+
+```ini
+BUILD_AGENT_LINUX_HOST=<linux 에이전트 주소>
+BUILD_AGENT_LINUX_TOKEN=<토큰>
+BUILD_AGENT_MAC_HOST=<mac 에이전트 주소>
+BUILD_AGENT_MAC_TOKEN=<토큰>
+# BUILD_AGENT_PORT=8790
+```
+
+- 키 = `BUILD_AGENT_<별칭>_HOST`·`_TOKEN`. 별칭 `linux`·`mac` = 릴리스 스크립트가 씀
+- 우선순위: 환경 변수 → `.env` → `~/.config/godot-enhanced/agents.json`
+- 토큰 = 에이전트 쪽 `~/.config/godot-enhanced/agent.env` 의 `BUILD_AGENT_TOKEN`
+- 에이전트 설치: `curl -fsSL https://raw.githubusercontent.com/joygram/godot-enhanced/main/misc/scripts/setup_build_agent.sh | bash`
+- macOS 에이전트 = 로그인 세션 LaunchAgent → 재부팅 후 로그인해야 뜸
+- 릴리스 노트·로그에 주소 안 남김 (노트 = "Built on a build agent")

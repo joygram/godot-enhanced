@@ -13,3 +13,4 @@
 - [DR-04] @start,create,modify 손대기 전에 이 작업의 설계 정본을 확인한다. 어긋나면 멈추고 승인받아 정본을 먼저 고친다.
 - [DC-HALT] @modify 인프라 에러는 멈추고 사용자에게 보고한다.
 - [DC-INFRA] @modify 인프라 코드는 티켓 스코프에 명시된 경우만 고친다.
+- [DR-05] @modify 엔진 패치는 npm run local(빌드→웹 템플릿→로컬 설치)로 확인한 뒤 ENHANCED_VERSION 올리고 npm run release로 배포한다. 절차 정본 = BUILDING.md 4·5절.
