@@ -1,6 +1,6 @@
 // 편집기 전부 로컬·빌드 에이전트로 빌드 → 릴리스 editor-<Godot>-<ENHANCED_VERSION> 업로드 (CI 없이)
 // 사용: node misc/scripts/build_editors.mjs [대상...]   (기본 = 전부)
-//   대상: windows-x86_64 · windows-arm64 · linux-x86_64 · mac-universal
+//   대상: windows-x86_64 · windows-arm64 · linux-x86_64 · linux-arm64 · mac-universal
 // 에이전트 = 별칭 linux·mac. 주소·토큰은 ~/.config/godot-enhanced/agents.json 에만 (저장소에 내부망 주소 금지)
 // 자산 이름 = 설치기·CI 와 같음: godot-<버전>-enhanced.<platform>.editor.<arch>.zip
 import { spawnSync } from "node:child_process";
@@ -44,6 +44,8 @@ const targets = {
 	"windows-x86_64": () => windows("x86_64"),
 	"windows-arm64": () => windows("arm64"),
 	"linux-x86_64": () => release("linux", "platform=linuxbsd", "arch=x86_64", ...flags),
+	// x86_64 에이전트에서 크로스 빌드 (에이전트에 g++-aarch64-linux-gnu 필요, platform/linuxbsd/detect.py)
+	"linux-arm64": () => release("linux", "platform=linuxbsd", "arch=arm64", ...flags),
 	// macOS = arm64·x86_64 빌드 → 에이전트에서 lipo 로 Godot.app universal (agent_tests/macos-universal.sh)
 	"mac-universal": () => ["arm64", "x86_64"].every((arch) => remote("mac", "platform=macos", `arch=${arch}`, "vulkan=no", "angle=no", ...flags))
 		&& remote("mac", "--test", "macos-universal"),

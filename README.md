@@ -2,6 +2,50 @@
 
 Patched build of [Godot Engine](https://github.com/godotengine/godot) `4.7.2-stable`. Upstream history kept intact; patches on top.
 
+## ⚡ Install / update — one command
+
+GDScript (editor + web export templates):
+
+```bash
+# Linux · macOS
+curl -fsSL https://raw.githubusercontent.com/joygram/godot-enhanced/main/install.sh | bash
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/joygram/godot-enhanced/main/install.ps1 | iex
+```
+
+C# / .NET 11 (C# editor + C# web templates + NuGet):
+
+```bash
+# Linux · macOS
+curl -fsSL https://raw.githubusercontent.com/joygram/godot-enhanced/main/install.sh | bash -s -- csharp
+```
+
+```powershell
+# Windows (PowerShell)
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/joygram/godot-enhanced/main/install.ps1))) csharp
+```
+
+- Update = same command again → latest release, installed releases skipped
+- Run: `godot-enhanced` (added to PATH)
+- Location: `~/.godot-enhanced/<release>`, templates in `export_templates/4.7.2.stable.enhanced-<version>`
+- Pin: `GODOT_ENHANCED_TAG=editor-4.7.2-0.3.3` (or `dotnet-web-…`) before the command
+- C#: [.NET 11 SDK](https://dotnet.microsoft.com/download) first; project `net11.0` + kit `Program.cs`
+- Project shortcut: `package.json` `"engine:update": "curl -fsSL <install.sh URL> | bash"` → `npm run engine:update`
+
+| Platform | GDScript editor | C# kit |
+|---|---|---|
+| Windows | x86_64, arm64 | x86_64 |
+| Linux | x86_64, arm64 | x86_64 |
+| macOS | universal | arm64 |
+
+🇰🇷 설치·업데이트
+- 위 명령 한 줄. GDScript = 기본, C# = `csharp`
+- 다시 실행 = 최신으로 업데이트 (받은 릴리스는 건너뜀)
+- 실행 = `godot-enhanced`
+
 🇰🇷 [한국어 안내](#한국어-안내) · [Patches](#patches) · [Prebuilt Web template](#prebuilt-web-export-template) · [C# web export](#c-net-web-export) · [Releases](https://github.com/joygram/godot-enhanced/releases)
 
 ## 🐱 Showcase — a Unity game moved to godot-enhanced C#, almost untouched

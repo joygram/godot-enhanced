@@ -110,6 +110,19 @@ def configure(env: "SConsEnvironment"):
         env.Append(CCFLAGS=["-m64"])
         env.Append(LINKFLAGS=["-m64"])
 
+    # godot-enhanced: x86_64 → arm64 cross-compilation with the distro GNU toolchain
+    # (apt install g++-aarch64-linux-gnu). Used only when CC/CXX were not given on the command line.
+    if env["arch"] == "arm64" and detect_arch() != "arm64" and not env["use_llvm"] and env["CC"] in ("gcc", "cc"):
+        prefix = "aarch64-linux-gnu-"
+        if not any(os.access(os.path.join(p, prefix + "g++"), os.X_OK) for p in os.environ.get("PATH", "").split(os.pathsep)):
+            print_error(f"arm64 cross-compilation needs {prefix}g++ (apt install g++-aarch64-linux-gnu).")
+            sys.exit(255)
+        env["CC"] = prefix + "gcc"
+        env["CXX"] = prefix + "g++"
+        env["AR"] = prefix + "ar"
+        env["RANLIB"] = prefix + "ranlib"
+        env["AS"] = prefix + "as"
+
     # CPU architecture flags.
     if env["arch"] == "rv64":
         # G = General-purpose extensions, C = Compression extension (very common).
