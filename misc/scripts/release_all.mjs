@@ -48,10 +48,19 @@ const steps = {
 		.map(([, v]) => remote("linux", "platform=web", "target=template_release", ...v, "--release", "web-template")).every(Boolean),
 	csharp: (missing) => {
 		const results = [];
-		// linux: C# 편집기 → (빠졌으면) 웹 템플릿 4종 → linux 키트. 키트는 릴리스의 템플릿을 받아 묶음 → 템플릿 먼저
-		const tpl = missing.some(has(".mono.zip")), lin = missing.some(has(".dotnet-web.linux-x86_64.zip"));
-		if (tpl || lin) results.push(remote("linux", "platform=linuxbsd", "arch=x86_64", "target=editor", "module_mono_enabled=yes", ...flags,
-			"--test", [tpl && "dotnet-web-templates", lin && "dotnet-kit"].filter(Boolean).join(",")));
+		// linux: C# 편집기 + glue → 빠진 웹 템플릿 하나씩 빌드·업로드 → linux 키트. 키트는 릴리스의 템플릿을 받아 묶음 → 템플릿 먼저
+		// (템플릿 = 빌드 단계로: 검사 단계 제한 1800s 로는 4종 못 끝냄)
+		const tpls = [["template_release", ""], ["template_debug", ""], ["template_release", ".nothreads"], ["template_debug", ".nothreads"]]
+			.filter(([t, s]) => missing.includes(`godot.web.${t}.wasm32${s}.mono.zip`));
+		const lin = missing.some(has(".dotnet-web.linux-x86_64.zip"));
+		if (tpls.length || lin) {
+			if (!remote("linux", "platform=linuxbsd", "arch=x86_64", "target=editor", "module_mono_enabled=yes", ...flags, "--test", "dotnet-glue")) return false;
+			for (const [t, s] of tpls) results.push(remote("linux", "platform=web", `target=${t}`, "module_mono_enabled=yes", "optimize=speed",
+				t === "template_release" ? "lto=full" : "lto=thin", ...(s ? ["threads=no"] : []), "ccflags=-DNDEBUG", "linkflags=-sMALLOC=mimalloc",
+				"--release", "dotnet-web"));
+			if (results.includes(false)) return false;
+			if (lin) results.push(remote("linux", "--test", "dotnet-kit"));
+		}
 		if (results.includes(false)) return false;
 		// mac: C# 편집기 arm64 → 키트
 		if (missing.some(has(".dotnet-web.macos-arm64.zip")))
