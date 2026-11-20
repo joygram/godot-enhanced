@@ -64,8 +64,21 @@ if (via === "local") {
 }
 if (!files.length) { console.error("[release] ✘ 올릴 산출물 없음"); process.exit(1); }
 
-// 업로드 (릴리스 없으면 생성)
-const exists = spawnSync("gh", ["release", "view", tag, "--repo", REPO], { cwd: root, stdio: "ignore" }).status === 0;
+// 편집기 = 설치기(install_godot.mjs·godot.mjs)가 찾는 이름 godot-<버전>-enhanced.<platform>.editor.<arch>.zip 로 묶음
+if (kind === "editor") {
+	files = files.map((f) => {
+		const m = f.match(/godot\.(\w+)\.editor\.(\w+?)(?:\.console)?(?:\.exe)?$/);
+		if (!m) return null;
+		const zip = join(dirname(f), `godot-${version}-enhanced.${m[1]}.editor.${m[2]}.zip`);
+		const parts = readdirSync(dirname(f)).filter((n) => n.startsWith(`godot.${m[1]}.editor.${m[2]}`) && !/\.(lib|exp|pdb|zip)$/.test(n));
+		if (!existsSync(zip) || statSync(zip).mtimeMs < statSync(f).mtimeMs) run("tar", ["-a", "-c", "-f", zip, "-C", dirname(f), ...parts]);
+		return zip;
+	}).filter((z, i, a) => z && a.indexOf(z) === i);
+}
+
+// 업로드 (릴리스 없으면 생성). 조회 실패가 네트워크 탓일 수 있어 3번 확인
+const viewOk = () => spawnSync("gh", ["release", "view", tag, "--repo", REPO], { cwd: root, stdio: "ignore" }).status === 0;
+const exists = viewOk() || viewOk() || viewOk();
 if (!exists) run("gh", ["release", "create", tag, "--repo", REPO, "--target", sha, "--title", `${kind} ${version} (godot-enhanced)`, "--notes", `godot-enhanced ${version} — ${kind}. Built ${via === "local" ? "locally" : `on ${via}`} from ${sha.slice(0, 10)}.`]);
 // 릴리스 자산 = 템플릿 zip·편집기 묶음만 (빌드 중간 산출물 wasm·js 는 올리지 않음)
 run("gh", ["release", "upload", tag, "--repo", REPO, ...files.filter((f) => !/\.(wasm|js)$/.test(f)), "--clobber"]);
